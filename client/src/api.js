@@ -1,3 +1,4 @@
+// CHANGE THIS LINE: Checks for the environment variable, or falls back to localhost
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 export const getPrices = () => fetch(`${API_BASE}/prices`).then(res => res.json());
@@ -5,8 +6,6 @@ export const getPricesHistory = (pair) => fetch(`${API_BASE}/prices/${pair.repla
 export const getHoldings = () => fetch(`${API_BASE}/holdings`).then(res => res.json());
 export const getBalances = () => fetch(`${API_BASE}/balances`).then(res => res.json());
 export const getTransactions = () => fetch(`${API_BASE}/transactions`).then(res => res.json());
-
-// --- THIS WAS MISSING ---
 export const getCasinoHistory = () => fetch(`${API_BASE}/casino/history`).then(res => res.json());
 
 export const deposit = (amount, currency) => 
@@ -78,6 +77,7 @@ export const marketHack = (direction) =>
     }).then(res => res.json());
 
 export const subscribeTransactions = (callback) => {
+    // SSE needs the full URL
     const eventSource = new EventSource(`${API_BASE}/transactions/stream`);
     eventSource.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -85,3 +85,14 @@ export const subscribeTransactions = (callback) => {
     };
     return () => eventSource.close();
 };
+
+// --- USER SWITCHER ---
+let currentUserId = localStorage.getItem('btm_user_id') || 'user_1';
+
+export const switchUser = (userId) => {
+    currentUserId = userId;
+    localStorage.setItem('btm_user_id', userId);
+    window.location.reload();
+};
+
+export const getCurrentUser = () => currentUserId;
