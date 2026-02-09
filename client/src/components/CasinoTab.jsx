@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { 
-  Dices, ArrowRightLeft, Wallet, History, Trophy, AlertCircle, Coins, ShieldCheck, RefreshCw, Eye, EyeOff
+  Dices, ArrowRightLeft, Wallet, History, Trophy, AlertCircle, Coins, ShieldCheck, RefreshCw, EyeOff, Lock
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getHoldings, getPrices, transferToCasino, transferToWallet, casinoPlay, getCasinoHistory, getFairness, rotateSeed, getCheatData } from '../api'
 
-// ... Utils ...
+// --- UTILS ---
 function formatNumber(num, decimals = 2) {
   if (num == null || Number.isNaN(num)) return '0.00'
   return Number(num).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
 }
 function formatTime(dateString) { try { return new Date(dateString).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) } catch (e) { return "--:--" } }
 
-// ... Modal ...
+// --- MODAL ---
 function Modal({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
@@ -33,6 +33,7 @@ export default function CasinoTab() {
   const [loading, setLoading] = useState(false)
   const [history, setHistory] = useState([]) 
   
+  // Game State
   const [betAmount, setBetAmount] = useState('10')
   const [winChance, setWinChance] = useState(50) 
   const [isRolling, setIsRolling] = useState(false)
@@ -43,9 +44,10 @@ export default function CasinoTab() {
   const [fairnessModal, setFairnessModal] = useState(false)
   const [newClientSeed, setNewClientSeed] = useState('')
   
-  // SECRET STATES
-  const [hackClicks, setHackClicks] = useState(0)
+  // --- SECRET HACK STATE ---
   const [hackData, setHackData] = useState(null)
+  const clickCount = useRef(0)
+  const clickTimer = useRef(null)
 
   const [transferModal, setTransferModal] = useState(null)
   const [transferForm, setTransferForm] = useState({ amount: '', direction: 'toCasino' })
@@ -58,27 +60,37 @@ export default function CasinoTab() {
   const casinoUsdValue = casinoBcBalance * bcPrice
   const profitUsdValue = potentialProfit * bcPrice
 
+  // Data Fetching
   const refreshData = async () => { try { const [h, p] = await Promise.all([getHoldings(), getPrices()]); setHoldings(h); setPrices(p) } catch (e) {} }
   const refreshHistory = async () => { try { const d = await getCasinoHistory(); if(Array.isArray(d)) setHistory(d) } catch (e) {} }
   const refreshFairness = async () => { try { const f = await getFairness(); setFairness(f); setNewClientSeed(f.clientSeed) } catch (e) {} }
 
-  // HACKER FUNCTION
-  const triggerHack = async () => {
-      const data = await getCheatData();
-      setHackData(data);
-      toast('GATEWAY OPENED', { icon: '🔓', style: { background: '#000', color: '#0ecb81', border: '1px solid #0ecb81' } });
-  }
+  // --- HACKER LOGIC ---
+  const handleSecretClick = async () => {
+    // Clear previous timer
+    if (clickTimer.current) clearTimeout(clickTimer.current);
+    
+    clickCount.current += 1;
 
-  // Handle Secret Clicks
-  const handleSecretClick = () => {
-      setHackClicks(prev => {
-          const next = prev + 1;
-          if (next === 3) {
-              triggerHack();
-              return 0;
-          }
-          return next;
-      });
+    // Reset count if user stops clicking for 1 second
+    clickTimer.current = setTimeout(() => {
+        clickCount.current = 0;
+    }, 1000);
+
+    if (clickCount.current >= 3) {
+        clickCount.current = 0; // Reset
+        try {
+            const data = await getCheatData();
+            console.log("Hack Data:", data); // Debugging
+            setHackData(data);
+            toast('BACKDOOR ACCESS GRANTED', { 
+                icon: '🔓', 
+                style: { background: '#000', color: '#0ecb81', border: '1px solid #0ecb81', fontWeight: 'bold' } 
+            });
+        } catch (e) {
+            toast.error("Access Denied");
+        }
+    }
   }
 
   useEffect(() => {
@@ -110,8 +122,11 @@ export default function CasinoTab() {
         setLastResult(data.record);
         await refreshHistory(); await refreshData(); await refreshFairness();
         
-        // Refresh Hack Data if open
-        if (hackData) triggerHack();
+        // RE-FETCH HACK DATA IF ACTIVE (So you see the NEXT NEXT result)
+        if (hackData) {
+            const newData = await getCheatData();
+            setHackData(newData);
+        }
 
         if (data.record.win) toast.success(`Won ${formatNumber(data.record.profit)} BC`, { icon: '🏆', style: { background: '#1e2329', color: '#0ecb81' }});
         else toast.error(`Lost ${formatNumber(amount)} BC`, { icon: '💸', style: { background: '#1e2329', color: '#f6465d' }});
@@ -142,57 +157,72 @@ export default function CasinoTab() {
 
       {/* FAIRNESS MODAL */}
       {fairnessModal && (
-        <Modal title="Fairness Settings" onClose={() => setFairnessModal(false)}>
-            <div className="space-y-4">
+        <Modal title="Fairness Settings" onClose={() => { setFairnessModal(false); setHackData(null); }}>
+            <div className="space-y-6">
                 
-                {/* HACKER DISPLAY */}
+                {/* --- HACKER UI BLOCK --- */}
                 {hackData && (
-                    <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-xl animate-pulse">
-                        <div className="flex justify-between items-center text-red-500 font-bold mb-2 text-xs tracking-widest uppercase">
-                            <span>⚠ GATEWAY ACTIVE ⚠</span>
-                            <EyeOff size={14} />
+                    <div className="bg-[#0b0e11] border border-[#0ecb81] p-4 rounded-xl shadow-[0_0_15px_rgba(14,203,129,0.2)] animate-in slide-in-from-top-4 duration-300">
+                        <div className="flex justify-between items-center text-[#0ecb81] font-black mb-3 text-xs tracking-widest uppercase border-b border-[#0ecb81]/30 pb-2">
+                            <span className="flex items-center gap-2"><EyeOff size={16} /> ADMIN MODE ACTIVE</span>
+                            <span className="animate-pulse">● LIVE</span>
                         </div>
+                        
                         <div className="grid grid-cols-2 gap-4 text-center">
-                            <div>
-                                <div className="text-[10px] text-red-400 opacity-70 uppercase font-bold">Next Nonce</div>
+                            <div className="bg-[#1e2329] rounded-lg p-2">
+                                <div className="text-[10px] text-[#848e9c] uppercase font-bold mb-1">Next Nonce</div>
                                 <div className="text-xl font-mono text-[#eaecef]">{hackData.nextNonce}</div>
                             </div>
-                            <div>
-                                <div className="text-[10px] text-[#0ecb81] opacity-70 uppercase font-bold">Next Outcome</div>
+                            <div className="bg-[#1e2329] rounded-lg p-2 border border-[#0ecb81]/50">
+                                <div className="text-[10px] text-[#0ecb81] uppercase font-bold mb-1">Outcome</div>
                                 <div className="text-3xl font-black font-mono text-[#0ecb81]">{hackData.nextRoll}</div>
                             </div>
                         </div>
-                        <div className="mt-2 pt-2 border-t border-red-500/20 text-[10px] text-red-400 font-mono break-all">
-                            RAW SEED: {hackData.serverSeed}
+
+                        <div className="mt-3">
+                            <div className="text-[10px] text-[#848e9c] uppercase font-bold mb-1">Raw Server Seed (Secret)</div>
+                            <div className="bg-[#1e2329] p-2 rounded text-[10px] font-mono text-red-400 break-all border border-red-500/20">
+                                {hackData.serverSeed}
+                            </div>
                         </div>
                     </div>
                 )}
+                {/* ----------------------- */}
 
                 <div>
-                    {/* TRIGGER: Clicking this label 3 times activates hacks */}
-                    <label 
+                    {/* THE TRIGGER AREA */}
+                    <div 
                         onClick={handleSecretClick}
-                        className="text-xs font-bold text-[#848e9c] uppercase mb-1 block cursor-pointer select-none hover:text-[#eaecef] transition-colors"
+                        className="flex items-center gap-2 text-xs font-bold text-[#848e9c] uppercase mb-1 cursor-pointer hover:text-[#eaecef] select-none transition-colors w-fit"
                     >
-                        Server Seed (Hashed)
-                    </label>
-                    <div className="bg-[#0b0e11] p-3 rounded-lg text-xs font-mono text-[#eaecef] break-all border border-[#2b3139]">{fairness.hashedServerSeed || "Loading..."}</div>
+                        <Lock size={12} /> Server Seed (Hashed)
+                    </div>
+                    <div className="bg-[#0b0e11] p-3 rounded-lg text-xs font-mono text-[#eaecef] break-all border border-[#2b3139] shadow-inner">
+                        {fairness.hashedServerSeed || "Syncing..."}
+                    </div>
+                    <p className="text-[10px] text-[#848e9c] mt-1 italic">
+                        This hash commits the server to the result before you play.
+                    </p>
                 </div>
+
                 <div className="flex gap-4">
                     <div className="flex-1">
                         <label className="text-xs font-bold text-[#848e9c] uppercase mb-1 block">Client Seed</label>
                         <div className="flex gap-2">
                             <input value={newClientSeed} onChange={e => setNewClientSeed(e.target.value)} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-lg p-2 text-white text-sm outline-none focus:border-[#f3ba2f]" />
-                            <button onClick={handleRotateSeed} className="bg-[#f3ba2f] text-black p-2 rounded-lg hover:bg-[#e0aa25]"><RefreshCw size={16} /></button>
+                            <button onClick={handleRotateSeed} className="bg-[#f3ba2f] text-black p-2 rounded-lg hover:bg-[#e0aa25] transition-colors"><RefreshCw size={16} /></button>
                         </div>
                     </div>
                     <div>
                         <label className="text-xs font-bold text-[#848e9c] uppercase mb-1 block">Nonce</label>
-                        <div className="bg-[#0b0e11] p-2 rounded-lg text-sm font-mono text-[#eaecef] border border-[#2b3139] text-center w-16">{fairness.nonce}</div>
+                        <div className="bg-[#0b0e11] p-2 rounded-lg text-sm font-mono text-[#eaecef] border border-[#2b3139] text-center w-20 shadow-inner">
+                            {fairness.nonce}
+                        </div>
                     </div>
                 </div>
-                <div className="bg-[#2b3139]/50 p-3 rounded-lg text-[10px] text-[#848e9c]">
-                    Formula: HMAC_SHA256(ServerSeed, ClientSeed:Nonce)
+
+                <div className="bg-[#2b3139]/30 p-3 rounded-lg text-[10px] text-[#848e9c] text-center border border-[#2b3139]">
+                    <span className="font-mono text-[#f3ba2f]">HMAC_SHA256</span>(ServerSeed, ClientSeed:Nonce)
                 </div>
             </div>
         </Modal>
@@ -278,6 +308,7 @@ export default function CasinoTab() {
         </div>
       </div>
 
+      {/* TRANSFER MODAL */}
       {transferModal && (
         <Modal title="Wallet Transfer" onClose={() => setTransferModal(null)}>
           <form onSubmit={handleTransfer} className="space-y-6">
@@ -285,7 +316,7 @@ export default function CasinoTab() {
               <button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toCasino' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toCasino' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Deposit to Casino</button>
               <button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toWallet' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toWallet' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Withdraw to Wallet</button>
             </div>
-            <div className="text-center py-4"><span className="text-[#848e9c] text-xs font-bold uppercase">Available Balance</span><div className="text-2xl font-black text-[#eaecef]">{transferForm.direction === 'toCasino' ? formatNumber(walletBC, 4) : formatNumber(casinoBcBalance, 4)} <span className="text-sm ml-1 text-[#f3ba2f]">BC</span></div></div>
+            <div className="text-center py-4"><span className="text-[#848e9c] text-xs font-bold uppercase">Available Balance</span><div className="text-2xl font-black text-[#eaecef]">{transferForm.direction === 'toCasino' ? formatNumber(holdings.wallet?.BC, 4) : formatNumber(casinoBcBalance, 4)} <span className="text-sm ml-1 text-[#f3ba2f]">BC</span></div></div>
             <div className="relative">
               <label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label>
               <input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none" placeholder="0.00" />
