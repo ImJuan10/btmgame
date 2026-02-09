@@ -9,6 +9,7 @@ import {
   Coins 
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+// Import api functions
 import { getHoldings, getPrices, transferToCasino, transferToWallet, casinoPlay, getCasinoHistory } from '../api'
 
 // --- UTILS ---
@@ -136,31 +137,25 @@ export default function CasinoTab() {
 
     setTimeout(async () => {
       try {
-        const response = await fetch('http://localhost:3000/casino/play', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount, currency: 'BC', winChance: winChance })
-        })
-        const data = await response.json()
+        // --- FIX: USE API FUNCTION INSTEAD OF FETCH ---
+        const data = await casinoPlay(amount, 'BC', 'dice', winChance)
+        // ----------------------------------------------
+        
         setLastResult(data.record)
         await refreshHistory()
         await refreshData()
         
-        // --- ADDED TOAST LOGIC HERE ---
         if (data.record.win) {
             toast.success(`You Won ${formatNumber(data.record.profit)} BC!`, { 
                 icon: '🏆', 
                 style: { background: '#1e2329', color: '#0ecb81', border: '1px solid #2b3139' }
             })
         } else {
-            // New: Loss Notification
             toast.error(`Lost ${formatNumber(amount)} BC`, {
                 icon: '💸',
                 style: { background: '#1e2329', color: '#f6465d', border: '1px solid #2b3139' }
             })
         }
-        // -----------------------------
-
       } catch (err) {
         toast.error("Game Error: " + err.message)
       } finally {
@@ -369,17 +364,9 @@ export default function CasinoTab() {
                <div className="text-2xl font-black text-[#eaecef]">{transferForm.direction === 'toCasino' ? formatNumber(walletBC, 4) : formatNumber(casinoBcBalance, 4)} <span className="text-sm ml-1 text-[#f3ba2f]">BC</span></div>
             </div>
             <div className="relative">
-            <label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label>
-            <input
-              type="number"
-              step="any"
-              value={transferForm.amount}
-              onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })}
-              // ADDED CLASSES HERE: appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
-              className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-              placeholder="0.00"
-            />
-          </div>
+              <label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label>
+              <input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none" placeholder="0.00" />
+            </div>
             <button type="submit" disabled={loading || !transferForm.amount} className="w-full py-4 bg-[#f3ba2f] text-[#0b0e11] font-black rounded-xl uppercase tracking-widest hover:bg-[#e0aa25] disabled:opacity-50">{loading ? 'Processing...' : 'Confirm Transfer'}</button>
           </form>
         </Modal>
