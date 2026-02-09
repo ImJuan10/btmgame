@@ -5,14 +5,12 @@ import {
 import toast from 'react-hot-toast'
 import { getHoldings, getPrices, transferToCasino, transferToWallet, casinoPlay, getCasinoHistory, getFairness, rotateSeed, getCheatData } from '../api'
 
-// --- UTILS ---
 function formatNumber(num, decimals = 2) {
   if (num == null || Number.isNaN(num)) return '0.00'
   return Number(num).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
 }
 function formatTime(dateString) { try { return new Date(dateString).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) } catch (e) { return "--:--" } }
 
-// --- MODAL ---
 function Modal({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
@@ -32,22 +30,18 @@ export default function CasinoTab() {
   const [prices, setPrices] = useState({})
   const [loading, setLoading] = useState(false)
   const [history, setHistory] = useState([]) 
-  
-  // Game State
   const [betAmount, setBetAmount] = useState('10')
   const [winChance, setWinChance] = useState(50) 
   const [isRolling, setIsRolling] = useState(false)
   const [lastResult, setLastResult] = useState(null)
   
-  // Fairness & Hacking
+  // Fairness & Hack
   const [fairness, setFairness] = useState({ hashedServerSeed: 'Loading...', clientSeed: '', nonce: 0 })
   const [fairnessModal, setFairnessModal] = useState(false)
   const [newClientSeed, setNewClientSeed] = useState('')
-  
-  // --- SECRET HACK STATE ---
   const [hackData, setHackData] = useState(null)
+  const lastClickTime = useRef(0)
   const clickCount = useRef(0)
-  const clickTimer = useRef(null)
 
   const [transferModal, setTransferModal] = useState(null)
   const [transferForm, setTransferForm] = useState({ amount: '', direction: 'toCasino' })
@@ -60,35 +54,28 @@ export default function CasinoTab() {
   const casinoUsdValue = casinoBcBalance * bcPrice
   const profitUsdValue = potentialProfit * bcPrice
 
-  // Data Fetching
   const refreshData = async () => { try { const [h, p] = await Promise.all([getHoldings(), getPrices()]); setHoldings(h); setPrices(p) } catch (e) {} }
   const refreshHistory = async () => { try { const d = await getCasinoHistory(); if(Array.isArray(d)) setHistory(d) } catch (e) {} }
   const refreshFairness = async () => { try { const f = await getFairness(); setFairness(f); setNewClientSeed(f.clientSeed) } catch (e) {} }
 
-  // --- HACKER LOGIC ---
+  // --- TRIPLE CLICK LOGIC ---
   const handleSecretClick = async () => {
-    // Clear previous timer
-    if (clickTimer.current) clearTimeout(clickTimer.current);
-    
+    const now = Date.now();
+    if (now - lastClickTime.current > 1000) {
+        clickCount.current = 0; // Reset if too slow
+    }
     clickCount.current += 1;
-
-    // Reset count if user stops clicking for 1 second
-    clickTimer.current = setTimeout(() => {
-        clickCount.current = 0;
-    }, 1000);
+    lastClickTime.current = now;
 
     if (clickCount.current >= 3) {
-        clickCount.current = 0; // Reset
+        clickCount.current = 0;
         try {
             const data = await getCheatData();
-            console.log("Hack Data:", data); // Debugging
             setHackData(data);
-            toast('BACKDOOR ACCESS GRANTED', { 
-                icon: '🔓', 
-                style: { background: '#000', color: '#0ecb81', border: '1px solid #0ecb81', fontWeight: 'bold' } 
-            });
+            toast('GATEWAY OPENED', { icon: '🔓', style: { background: '#000', color: '#0ecb81', border: '1px solid #0ecb81' } });
         } catch (e) {
-            toast.error("Access Denied");
+            toast.error("Access Denied: Check Console");
+            console.error(e);
         }
     }
   }
@@ -121,13 +108,7 @@ export default function CasinoTab() {
         const data = await casinoPlay(amount, 'BC', 'dice', winChance);
         setLastResult(data.record);
         await refreshHistory(); await refreshData(); await refreshFairness();
-        
-        // RE-FETCH HACK DATA IF ACTIVE (So you see the NEXT NEXT result)
-        if (hackData) {
-            const newData = await getCheatData();
-            setHackData(newData);
-        }
-
+        if (hackData) { const newData = await getCheatData(); setHackData(newData); }
         if (data.record.win) toast.success(`Won ${formatNumber(data.record.profit)} BC`, { icon: '🏆', style: { background: '#1e2329', color: '#0ecb81' }});
         else toast.error(`Lost ${formatNumber(amount)} BC`, { icon: '💸', style: { background: '#1e2329', color: '#f6465d' }});
       } catch (err) { toast.error(err.message) } finally { setIsRolling(false) }
@@ -159,116 +140,56 @@ export default function CasinoTab() {
       {fairnessModal && (
         <Modal title="Fairness Settings" onClose={() => { setFairnessModal(false); setHackData(null); }}>
             <div className="space-y-6">
-                
-                {/* --- HACKER UI BLOCK --- */}
                 {hackData && (
                     <div className="bg-[#0b0e11] border border-[#0ecb81] p-4 rounded-xl shadow-[0_0_15px_rgba(14,203,129,0.2)] animate-in slide-in-from-top-4 duration-300">
                         <div className="flex justify-between items-center text-[#0ecb81] font-black mb-3 text-xs tracking-widest uppercase border-b border-[#0ecb81]/30 pb-2">
                             <span className="flex items-center gap-2"><EyeOff size={16} /> ADMIN MODE ACTIVE</span>
                             <span className="animate-pulse">● LIVE</span>
                         </div>
-                        
                         <div className="grid grid-cols-2 gap-4 text-center">
-                            <div className="bg-[#1e2329] rounded-lg p-2">
-                                <div className="text-[10px] text-[#848e9c] uppercase font-bold mb-1">Next Nonce</div>
-                                <div className="text-xl font-mono text-[#eaecef]">{hackData.nextNonce}</div>
-                            </div>
-                            <div className="bg-[#1e2329] rounded-lg p-2 border border-[#0ecb81]/50">
-                                <div className="text-[10px] text-[#0ecb81] uppercase font-bold mb-1">Outcome</div>
-                                <div className="text-3xl font-black font-mono text-[#0ecb81]">{hackData.nextRoll}</div>
-                            </div>
+                            <div className="bg-[#1e2329] rounded-lg p-2"><div className="text-[10px] text-[#848e9c] uppercase font-bold mb-1">Next Nonce</div><div className="text-xl font-mono text-[#eaecef]">{hackData.nextNonce}</div></div>
+                            <div className="bg-[#1e2329] rounded-lg p-2 border border-[#0ecb81]/50"><div className="text-[10px] text-[#0ecb81] uppercase font-bold mb-1">Outcome</div><div className="text-3xl font-black font-mono text-[#0ecb81]">{hackData.nextRoll}</div></div>
                         </div>
-
-                        <div className="mt-3">
-                            <div className="text-[10px] text-[#848e9c] uppercase font-bold mb-1">Raw Server Seed (Secret)</div>
-                            <div className="bg-[#1e2329] p-2 rounded text-[10px] font-mono text-red-400 break-all border border-red-500/20">
-                                {hackData.serverSeed}
-                            </div>
-                        </div>
+                        <div className="mt-3"><div className="text-[10px] text-[#848e9c] uppercase font-bold mb-1">Raw Server Seed (Secret)</div><div className="bg-[#1e2329] p-2 rounded text-[10px] font-mono text-red-400 break-all border border-red-500/20">{hackData.serverSeed}</div></div>
                     </div>
                 )}
-                {/* ----------------------- */}
-
                 <div>
-                    {/* THE TRIGGER AREA */}
-                    <div 
-                        onClick={handleSecretClick}
-                        className="flex items-center gap-2 text-xs font-bold text-[#848e9c] uppercase mb-1 cursor-pointer hover:text-[#eaecef] select-none transition-colors w-fit"
-                    >
-                        <Lock size={12} /> Server Seed (Hashed)
-                    </div>
-                    <div className="bg-[#0b0e11] p-3 rounded-lg text-xs font-mono text-[#eaecef] break-all border border-[#2b3139] shadow-inner">
-                        {fairness.hashedServerSeed || "Syncing..."}
-                    </div>
-                    <p className="text-[10px] text-[#848e9c] mt-1 italic">
-                        This hash commits the server to the result before you play.
-                    </p>
+                    <div onClick={handleSecretClick} className="flex items-center gap-2 text-xs font-bold text-[#848e9c] uppercase mb-1 cursor-pointer hover:text-[#eaecef] select-none transition-colors w-fit"><Lock size={12} /> Server Seed (Hashed)</div>
+                    <div className="bg-[#0b0e11] p-3 rounded-lg text-xs font-mono text-[#eaecef] break-all border border-[#2b3139] shadow-inner">{fairness.hashedServerSeed || "Syncing..."}</div>
                 </div>
-
                 <div className="flex gap-4">
-                    <div className="flex-1">
-                        <label className="text-xs font-bold text-[#848e9c] uppercase mb-1 block">Client Seed</label>
-                        <div className="flex gap-2">
-                            <input value={newClientSeed} onChange={e => setNewClientSeed(e.target.value)} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-lg p-2 text-white text-sm outline-none focus:border-[#f3ba2f]" />
-                            <button onClick={handleRotateSeed} className="bg-[#f3ba2f] text-black p-2 rounded-lg hover:bg-[#e0aa25] transition-colors"><RefreshCw size={16} /></button>
-                        </div>
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-[#848e9c] uppercase mb-1 block">Nonce</label>
-                        <div className="bg-[#0b0e11] p-2 rounded-lg text-sm font-mono text-[#eaecef] border border-[#2b3139] text-center w-20 shadow-inner">
-                            {fairness.nonce}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-[#2b3139]/30 p-3 rounded-lg text-[10px] text-[#848e9c] text-center border border-[#2b3139]">
-                    <span className="font-mono text-[#f3ba2f]">HMAC_SHA256</span>(ServerSeed, ClientSeed:Nonce)
+                    <div className="flex-1"><label className="text-xs font-bold text-[#848e9c] uppercase mb-1 block">Client Seed</label><div className="flex gap-2"><input value={newClientSeed} onChange={e => setNewClientSeed(e.target.value)} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-lg p-2 text-white text-sm outline-none focus:border-[#f3ba2f]" /><button onClick={handleRotateSeed} className="bg-[#f3ba2f] text-black p-2 rounded-lg hover:bg-[#e0aa25] transition-colors"><RefreshCw size={16} /></button></div></div>
+                    <div><label className="text-xs font-bold text-[#848e9c] uppercase mb-1 block">Nonce</label><div className="bg-[#0b0e11] p-2 rounded-lg text-sm font-mono text-[#eaecef] border border-[#2b3139] text-center w-20 shadow-inner">{fairness.nonce}</div></div>
                 </div>
             </div>
         </Modal>
       )}
 
-      {/* BANKROLL */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-2 rounded-2xl border border-[#2b3139] bg-[#161a1e] p-6 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Trophy size={100} className="text-[#f3ba2f]" /></div>
           <div className="relative z-10">
             <p className="text-[#848e9c] text-xs font-bold uppercase tracking-widest mb-1 flex items-center gap-2"><Wallet size={14} /> Casino Balance</p>
-            <div>
-              <div className="flex items-baseline gap-2"><span className="text-4xl font-black text-[#f3ba2f] font-mono tracking-tight tabular-nums">{formatNumber(casinoBcBalance, 4)}</span><span className="text-[#eaecef] font-bold">BC</span></div>
-              <div className="text-sm font-medium text-[#848e9c] mt-1 font-mono">≈ ${formatNumber(casinoUsdValue, 2)}</div>
-            </div>
-            <div className="mt-4 flex gap-3">
-              <button onClick={() => { setTransferForm({direction: 'toCasino', amount: ''}); setTransferModal(true) }} className="px-4 py-2 bg-[#2b3139] hover:bg-[#363c45] text-[#eaecef] rounded-lg text-xs font-bold uppercase border border-[#474d57] transition-all active:scale-95 flex items-center gap-2">
-                <ArrowRightLeft size={14} /> Deposit to Casino
-              </button>
-            </div>
+            <div><div className="flex items-baseline gap-2"><span className="text-4xl font-black text-[#f3ba2f] font-mono tracking-tight tabular-nums">{formatNumber(casinoBcBalance, 4)}</span><span className="text-[#eaecef] font-bold">BC</span></div><div className="text-sm font-medium text-[#848e9c] mt-1 font-mono">≈ ${formatNumber(casinoUsdValue, 2)}</div></div>
+            <div className="mt-4 flex gap-3"><button onClick={() => { setTransferForm({direction: 'toCasino', amount: ''}); setTransferModal(true) }} className="px-4 py-2 bg-[#2b3139] hover:bg-[#363c45] text-[#eaecef] rounded-lg text-xs font-bold uppercase border border-[#474d57] transition-all active:scale-95 flex items-center gap-2"><ArrowRightLeft size={14} /> Deposit to Casino</button></div>
           </div>
         </div>
         <div className="rounded-2xl border border-[#2b3139] bg-[#161a1e] p-4 flex flex-col min-h-[140px]">
           <p className="text-[#848e9c] text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2"><History size={14} /> Recent Rolls</p>
           <div className="flex-1 flex gap-2 overflow-x-auto items-center md:flex-wrap content-start scrollbar-hide">
             {history.length === 0 && <span className="text-[#848e9c] text-xs italic">No bets placed yet.</span>}
-            {history.slice(0, 12).map((h, i) => (
-              <div key={i} className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold font-mono text-[10px] border border-opacity-20 animate-in zoom-in duration-300 ${h.win ? 'bg-[#0ecb81]/10 border-[#0ecb81] text-[#0ecb81]' : 'bg-[#f6465d]/10 border-[#f6465d] text-[#f6465d]'}`}>{h.roll}</div>
-            ))}
+            {history.slice(0, 12).map((h, i) => (<div key={i} className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold font-mono text-[10px] border border-opacity-20 animate-in zoom-in duration-300 ${h.win ? 'bg-[#0ecb81]/10 border-[#0ecb81] text-[#0ecb81]' : 'bg-[#f6465d]/10 border-[#f6465d] text-[#f6465d]'}`}>{h.roll}</div>))}
           </div>
         </div>
       </div>
 
-      {/* GAME BOARD */}
       <div className="rounded-3xl border border-[#2b3139] bg-[#161a1e] overflow-hidden shadow-2xl relative">
         <div className="grid grid-cols-1 lg:grid-cols-4">
           <div className="lg:col-span-1 bg-[#1e2329] border-r border-[#2b3139] p-6 flex flex-col gap-6">
             <div>
               <div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-[#848e9c] uppercase">Bet Amount</label><span className="text-[10px] font-bold text-[#848e9c]">Max: {formatNumber(casinoBcBalance, 2)}</span></div>
-              <div className="relative group">
-                <input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl py-3 pl-3 pr-10 text-white font-mono font-bold focus:border-[#f3ba2f] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                <div className="absolute right-3 top-3.5 pointer-events-none"><Coins size={16} className="text-[#f3ba2f]" /></div>
-              </div>
-              <div className="grid grid-cols-4 gap-2 mt-2">
-                {['Min', '1/2', '2x', 'Max'].map(label => (<button key={label} onClick={() => { if(label === 'Min') adjustBet('min'); if(label === '1/2') adjustBet('half'); if(label === '2x') adjustBet('double'); if(label === 'Max') adjustBet('max'); }} className="bg-[#2b3139] hover:bg-[#363c45] text-[#848e9c] hover:text-[#eaecef] py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors">{label}</button>))}
-              </div>
+              <div className="relative group"><input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl py-3 pl-3 pr-10 text-white font-mono font-bold focus:border-[#f3ba2f] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none" /><div className="absolute right-3 top-3.5 pointer-events-none"><Coins size={16} className="text-[#f3ba2f]" /></div></div>
+              <div className="grid grid-cols-4 gap-2 mt-2">{['Min', '1/2', '2x', 'Max'].map(label => (<button key={label} onClick={() => { if(label === 'Min') adjustBet('min'); if(label === '1/2') adjustBet('half'); if(label === '2x') adjustBet('double'); if(label === 'Max') adjustBet('max'); }} className="bg-[#2b3139] hover:bg-[#363c45] text-[#848e9c] hover:text-[#eaecef] py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors">{label}</button>))}</div>
             </div>
             <div className="mt-auto bg-[#0b0e11] rounded-xl p-4 border border-[#2b3139]">
               <div className="flex justify-between text-xs text-[#848e9c] font-bold uppercase mb-1"><span>Profit on Win</span></div>
@@ -277,7 +198,6 @@ export default function CasinoTab() {
             </div>
             <button onClick={handlePlay} disabled={isRolling || !betAmount} className={`w-full py-4 rounded-xl font-black text-lg uppercase tracking-widest shadow-lg transition-all active:scale-95 ${isRolling ? 'bg-[#2b3139] text-[#848e9c] cursor-not-allowed' : 'bg-[#f3ba2f] text-[#0b0e11] hover:bg-[#e0aa25] shadow-[#f3ba2f]/20'}`}>{isRolling ? 'Rolling...' : 'Bet'}</button>
           </div>
-
           <div className="lg:col-span-3 p-8 flex flex-col relative min-h-[400px]">
             <div className="flex justify-between bg-[#0b0e11] rounded-2xl p-4 border border-[#2b3139] mb-12">
                <div className="text-center w-1/3 border-r border-[#2b3139]"><div className="text-xs font-bold text-[#848e9c] uppercase mb-1">Multiplier</div><div className="text-xl font-black text-[#eaecef] font-mono">{multiplier}x</div></div>
@@ -292,14 +212,7 @@ export default function CasinoTab() {
                 </div>
                 <input type="range" min="2" max="97" step="1" value={rollOverTarget} onChange={(e) => setWinChance(100 - Number(e.target.value))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" />
                 <div className="absolute w-10 h-10 bg-[#eaecef] rounded-xl shadow-2xl border-4 border-[#161a1e] flex items-center justify-center pointer-events-none transition-all duration-75 z-10" style={{ left: `calc(${rollOverTarget}% - 20px)` }}><ArrowRightLeft size={16} className="text-[#161a1e]" /></div>
-                {lastResult && !isRolling && (
-                  <div className="absolute -top-16 z-30 transition-all duration-300 pointer-events-none" style={{ left: `calc(${lastResult.roll}% - 30px)` }}>
-                    <div className={`px-4 py-2 rounded-lg font-black text-lg shadow-2xl border-2 flex flex-col items-center animate-in zoom-in ${lastResult.win ? 'bg-[#0ecb81] border-[#0ecb81] text-[#0b0e11]' : 'bg-[#1e2329] border-[#f6465d] text-[#f6465d]'}`}>
-                      <span className="font-mono">{lastResult.roll}</span>
-                      <div className={`w-2 h-2 rotate-45 absolute -bottom-1 ${lastResult.win ? 'bg-[#0ecb81]' : 'bg-[#f6465d]'}`} />
-                    </div>
-                  </div>
-                )}
+                {lastResult && !isRolling && (<div className="absolute -top-16 z-30 transition-all duration-300 pointer-events-none" style={{ left: `calc(${lastResult.roll}% - 30px)` }}><div className={`px-4 py-2 rounded-lg font-black text-lg shadow-2xl border-2 flex flex-col items-center animate-in zoom-in ${lastResult.win ? 'bg-[#0ecb81] border-[#0ecb81] text-[#0b0e11]' : 'bg-[#1e2329] border-[#f6465d] text-[#f6465d]'}`}><span className="font-mono">{lastResult.roll}</span><div className={`w-2 h-2 rotate-45 absolute -bottom-1 ${lastResult.win ? 'bg-[#0ecb81]' : 'bg-[#f6465d]'}`} /></div></div>)}
               </div>
               <div className="flex justify-between mt-2 text-xs font-bold text-[#848e9c]"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
             </div>
@@ -308,7 +221,6 @@ export default function CasinoTab() {
         </div>
       </div>
 
-      {/* TRANSFER MODAL */}
       {transferModal && (
         <Modal title="Wallet Transfer" onClose={() => setTransferModal(null)}>
           <form onSubmit={handleTransfer} className="space-y-6">
@@ -317,10 +229,7 @@ export default function CasinoTab() {
               <button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toWallet' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toWallet' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Withdraw to Wallet</button>
             </div>
             <div className="text-center py-4"><span className="text-[#848e9c] text-xs font-bold uppercase">Available Balance</span><div className="text-2xl font-black text-[#eaecef]">{transferForm.direction === 'toCasino' ? formatNumber(holdings.wallet?.BC, 4) : formatNumber(casinoBcBalance, 4)} <span className="text-sm ml-1 text-[#f3ba2f]">BC</span></div></div>
-            <div className="relative">
-              <label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label>
-              <input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none" placeholder="0.00" />
-            </div>
+            <div className="relative"><label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label><input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none" placeholder="0.00" /></div>
             <button type="submit" disabled={loading || !transferForm.amount} className="w-full py-4 bg-[#f3ba2f] text-[#0b0e11] font-black rounded-xl uppercase tracking-widest hover:bg-[#e0aa25] disabled:opacity-50">{loading ? 'Processing...' : 'Confirm Transfer'}</button>
           </form>
         </Modal>
