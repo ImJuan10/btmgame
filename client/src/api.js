@@ -86,6 +86,16 @@ export const subscribeTransactions = (callback) => {
     return () => eventSource.close();
 };
 
+export const getFairness = () => 
+    fetch(`${API_BASE}/casino/fairness`, { headers: headers() }).then(res => res.json());
+
+export const rotateSeed = (newClientSeed) => 
+    fetch(`${API_BASE}/casino/rotate-seed`, {
+        method: 'POST',
+        headers: headers(),
+        body: JSON.stringify({ newClientSeed })
+    }).then(res => res.json());
+
 // --- USER SWITCHER ---
 let currentUserId = localStorage.getItem('btm_user_id') || 'user_1';
 
