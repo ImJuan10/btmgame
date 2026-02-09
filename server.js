@@ -1,210 +1,82 @@
 const express = require('express');
 const cors = require('cors');
 const events = require('events');
-const crypto = require('crypto');
+const crypto = require('crypto'); // Ensure this is imported
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
 // ==========================================
-// 1. ORIGINAL PRICE SIMULATION LOGIC (RESTORED)
+// 1. CONFIGURATION & DATA STORAGE
 // ==========================================
+
+// Global Market History
+const historicalPrices = {}; 
+const COINS = ['BTC', 'ETH', 'DOGE', 'SHIB', 'TON', 'TRX', 'LTC', 'LUNA', 'BC', 'USDT'];
+
+// Init history arrays
+COINS.forEach(c => historicalPrices[c] = []);
 
 let prices = {
-    BTC: 0.00089,
-    ETH: 0.32,
-    DOGE: 0.0000869,
-    SHIB: 0.000007,
-    TON: 0.39,
-    TRX: 0.08,
-    LTC: 1.1,
-    LUNA: 1.35,
-    BC: 0.0001,
-    USDT: 1,
+    BTC: 0.00089, ETH: 0.32, DOGE: 0.0000869, SHIB: 0.000007, TON: 0.39,
+    TRX: 0.08, LTC: 1.1, LUNA: 1.35, BC: 0.0001, USDT: 1,
 };
 
-// Global History to prevent "Snaking"
-const historicalPrices = {};
-Object.keys(prices).forEach(c => historicalPrices[c] = []);
-
-// Simulation State Variables
+// Simulation State
 let marketHackMultiplier = 1;
 let currentDynamicProbability = 0;
-
 let probabilityState = {
-    targetProb: 0.58,
-    duration: 0, 
-    remainingTime: 0,
-    startTime: Date.now(),
-    transitioning: false,
-    startTransitionProb: 0,
-    endTransitionProb: 0,
-    transitionDuration: 0,
-    transitionElapsedTime: 0
+    targetProb: 0.58, duration: 0, startTime: Date.now(), transitioning: false,
+    startTransitionProb: 0, endTransitionProb: 0, transitionDuration: 0, transitionElapsedTime: 0
 };
 
-function generateRandomDuration() {
-    return Math.floor(Math.random() * (45 - 30 + 1)) + 30; // Between 30 and 45 seconds
-}
-
-// --- THE ORIGINAL FUNCTION ---
-function simulatePriceChange(currentPrice, currency) {
-    // Configuration for trends
-    let trendDirection = Math.random() < 0.55 ? 1 : -1; // 1 for upward, -1 for downward
-    let trendLength = Math.floor(Math.random() * 10) + 5; // 5 to 15 iterations
-    let trendStrength = Math.random() * 0.02 + 0.01; // 1% to 3% per step
-
-    // Update dynamic probability logic
-    const currentTime = Date.now();
-    const elapsedSinceLastUpdate = (currentTime - probabilityState.startTime) / 1000; // in seconds
-
-    if (!probabilityState.transitioning) {
-        // If not transitioning, check if it's time to start a transition or update static phase
-        if (elapsedSinceLastUpdate >= probabilityState.duration) {
-            probabilityState.startTime = currentTime; // Reset start time for the new phase
-            probabilityState.transitioning = true;
-            probabilityState.startTransitionProb = currentDynamicProbability;
-
-            if (probabilityState.targetProb === 0.58) {
-                probabilityState.targetProb = 0.46;
-                probabilityState.endTransitionProb = 0.46;
-            } else {
-                probabilityState.targetProb = 0.58;
-                probabilityState.endTransitionProb = 0.58;
-            }
-            probabilityState.transitionDuration = Math.floor(Math.random() * (45 - 30 + 1)) + 30; // New random duration for the next phase
-            probabilityState.transitionElapsedTime = 0;
-        } else {
-            // Still in a static phase, maintain the target probability
-            currentDynamicProbability = probabilityState.targetProb * marketHackMultiplier;
-        }
-    } else {
-        // Currently transitioning
-        probabilityState.transitionElapsedTime += (currentTime - probabilityState.startTime) / 1000;
-        probabilityState.startTime = currentTime; // Reset for next tick
-
-        if (probabilityState.transitionElapsedTime >= probabilityState.transitionDuration) {
-            // Transition finished, set to target and reset for next static phase
-            currentDynamicProbability = probabilityState.endTransitionProb * marketHackMultiplier;
-            probabilityState.transitioning = false;
-            probabilityState.duration = generateRandomDuration(); // Set duration for the new static phase
-            probabilityState.remainingTime = probabilityState.duration; // Reset remaining time
-        } else {
-            // Calculate interpolated probability
-            const progress = probabilityState.transitionElapsedTime / probabilityState.transitionDuration;
-            currentDynamicProbability = (probabilityState.startTransitionProb + (probabilityState.endTransitionProb - probabilityState.startTransitionProb) * progress) * marketHackMultiplier;
-        }
-    }
-
-    // Minor fluctuations outside of trends
-    let fluctuationStrength = Math.random() * 0.005 * (Math.random() < currentDynamicProbability ? -1 : 1);
-
-    // Spike/Dip Probability
-    const spikeProbability = 0.005;
-    const spikeMagnitude = Math.random() * 0.1 + 0.05; // 5% to 15%
-
-    // Track trend state (Global state attached to function to keep trends connected)
-    if (!simulatePriceChange.trendState) {
-        simulatePriceChange.trendState = {
-            remaining: trendLength,
-            direction: trendDirection,
-        };
-    }
-
-    let changePercentage;
-
-    // Apply trend if active
-    if (simulatePriceChange.trendState.remaining > 0) {
-        changePercentage = simulatePriceChange.trendState.direction * trendStrength;
-        simulatePriceChange.trendState.remaining--;
-    } else {
-        // Reset trend when it ends
-        simulatePriceChange.trendState = {
-            remaining: Math.floor(Math.random() * 10) + 5, // New trend length
-            direction: Math.random() < currentDynamicProbability ? 1 : -1, // Random direction based on currentDynamicProbability
-        };
-        changePercentage = fluctuationStrength;
-    }
-
-    // Apply spike/dip randomly
-    if (Math.random() < spikeProbability) {
-        changePercentage += spikeMagnitude * (Math.random() < currentDynamicProbability ? -1 : 1);
-    }
-
-    // Calculate new price
-    let newPrice = currentPrice * (1 + changePercentage);
-
-    // Define multipliers
-    const slowIncreaseMultiplier = 0.999; // Slow down price growth
-
-    // Apply multipliers based on price range (Restored your specific caps)
-    if (newPrice >= 3857 && currency === 'ETH') newPrice *= slowIncreaseMultiplier;
-    if (newPrice >= 5.75 && currency === 'DOGE') newPrice *= slowIncreaseMultiplier;
-    if (newPrice >= 0.075 && currency === 'SHIB') newPrice *= slowIncreaseMultiplier;
-    if (newPrice >= 15.12 && currency === 'TON') newPrice *= slowIncreaseMultiplier;
-    if (newPrice >= 315.12 && (currency === 'TRX' || currency === 'LTC' || currency === 'LUNA')) newPrice *= slowIncreaseMultiplier;
-    if (newPrice >= 100000 && (currency === 'BTC' || currency === 'BC')) newPrice *= slowIncreaseMultiplier;
-
-    // Ensure stability for USDT or similar stablecoins
-    if (currency === 'USDT') {
-        return Math.random() * (1.001 - 0.999) + 0.999; // Tiny fluctuation around 1.00
-    }
-
-    // Format price for low-value assets
-    return Math.max(newPrice, 0.0000000000001); // Ensure no negative or near-zero prices
-}
-
-// === MAIN LOOP ===
-setInterval(() => {
-    const now = Date.now();
-    for (const currency in prices) {
-        prices[currency] = simulatePriceChange(prices[currency], currency);
-        
-        // Push to history
-        historicalPrices[currency].push({ price: prices[currency], timestamp: now });
-        if (historicalPrices[currency].length > 1000) historicalPrices[currency].shift();
-    }
-    
-    // Update User Balance History
-    Object.values(USERS).forEach(u => {
-        const total = Object.entries(u.holdings).reduce((sum, [curr, amt]) => sum + (amt * prices[curr]), 0);
-        u.balanceHistory.push({ balance: total, timestamp: now });
-        if (u.balanceHistory.length > 1000) u.balanceHistory.shift();
-    });
-}, 1000);
-
-
-// ==========================================
-// 2. USER SYSTEM & CASINO (Kept the new features)
-// ==========================================
-
-const genAddr = (coin) => (coin==='BTC'?'bc1q':coin==='TRX'?'T':'0x') + crypto.randomBytes(8).toString('hex').toUpperCase();
+// Helper: Crypto Functions
+const genAddr = (c) => (c==='BTC'?'bc1q':c==='TRX'?'T':'0x') + crypto.randomBytes(8).toString('hex').toUpperCase();
 const generateServerSeed = () => crypto.randomBytes(32).toString('hex');
-const sha256 = (text) => crypto.createHash('sha256').update(text).digest('hex');
-const generateRoll = (serverSeed, clientSeed, nonce) => {
-    const hmac = crypto.createHmac('sha256', serverSeed);
-    hmac.update(`${clientSeed}:${nonce}`);
-    const hash = hmac.digest('hex');
-    const decimal = parseInt(hash.substring(0, 8), 16);
-    return (decimal % 10001) / 100;
+const sha256 = (text) => {
+    try {
+        return crypto.createHash('sha256').update(String(text)).digest('hex');
+    } catch (e) {
+        console.error("Hash Error:", e);
+        return "error_hashing_seed";
+    }
 };
+const generateRoll = (serverSeed, clientSeed, nonce) => {
+    try {
+        const hmac = crypto.createHmac('sha256', serverSeed);
+        hmac.update(`${clientSeed}:${nonce}`);
+        const hash = hmac.digest('hex');
+        const decimal = parseInt(hash.substring(0, 8), 16);
+        return (decimal % 10001) / 100;
+    } catch (e) {
+        return 0.00;
+    }
+};
+
+// ==========================================
+// 2. USER DATABASE
+// ==========================================
 
 const USERS = {
     'user_1': {
-        holdings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, 0])), USDT: 50000, BC: 1000 },
+        name: "Whale Trader",
+        holdings: { ...Object.fromEntries(COINS.map(c => [c, 0])), USDT: 50, BC: 1000 },
         casinoHoldings: { USDT: 0, BC: 500 },
         addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
         serverSeed: generateServerSeed(), clientSeed: "lucky_client", nonce: 0
     },
     'user_2': {
-        holdings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, 0])), USDT: 100, BC: 10 },
+        name: "Newbie Degen",
+        holdings: { ...Object.fromEntries(COINS.map(c => [c, 0])), USDT: 100, BC: 10 },
         casinoHoldings: { USDT: 0, BC: 0 },
         addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
         serverSeed: generateServerSeed(), clientSeed: "newbie_seed", nonce: 0
     }
 };
-Object.values(USERS).forEach(u => Object.keys(prices).forEach(c => u.addresses[c] = genAddr(c)));
+
+// Generate Addresses
+Object.values(USERS).forEach(u => COINS.forEach(c => u.addresses[c] = genAddr(c)));
 
 const getUser = (req) => {
     const uid = req.headers['x-user-id'] || 'user_1';
@@ -212,7 +84,105 @@ const getUser = (req) => {
 };
 
 // ==========================================
-// 3. API ENDPOINTS
+// 3. SIMULATION LOOP (RESTORED ORIGINAL LOGIC)
+// ==========================================
+
+function generateRandomDuration() {
+    return Math.floor(Math.random() * (45 - 30 + 1)) + 30;
+}
+
+function simulatePriceChange(currentPrice, currency) {
+    let trendDirection = Math.random() < 0.55 ? 1 : -1;
+    let trendLength = Math.floor(Math.random() * 10) + 5;
+    let trendStrength = Math.random() * 0.02 + 0.01;
+
+    const currentTime = Date.now();
+    const elapsed = (currentTime - probabilityState.startTime) / 1000;
+
+    if (!probabilityState.transitioning) {
+        if (elapsed >= probabilityState.duration) {
+            probabilityState.startTime = currentTime;
+            probabilityState.transitioning = true;
+            probabilityState.startTransitionProb = currentDynamicProbability;
+            if (probabilityState.targetProb === 0.58) {
+                probabilityState.targetProb = 0.46;
+                probabilityState.endTransitionProb = 0.46;
+            } else {
+                probabilityState.targetProb = 0.58;
+                probabilityState.endTransitionProb = 0.58;
+            }
+            probabilityState.transitionDuration = generateRandomDuration();
+            probabilityState.transitionElapsedTime = 0;
+        } else {
+            currentDynamicProbability = probabilityState.targetProb * marketHackMultiplier;
+        }
+    } else {
+        probabilityState.transitionElapsedTime += (currentTime - probabilityState.startTime) / 1000;
+        probabilityState.startTime = currentTime;
+        if (probabilityState.transitionElapsedTime >= probabilityState.transitionDuration) {
+            currentDynamicProbability = probabilityState.endTransitionProb * marketHackMultiplier;
+            probabilityState.transitioning = false;
+            probabilityState.duration = generateRandomDuration();
+        } else {
+            const progress = probabilityState.transitionElapsedTime / probabilityState.transitionDuration;
+            currentDynamicProbability = (probabilityState.startTransitionProb + (probabilityState.endTransitionProb - probabilityState.startTransitionProb) * progress) * marketHackMultiplier;
+        }
+    }
+
+    let fluctuation = Math.random() * 0.005 * (Math.random() < currentDynamicProbability ? -1 : 1);
+    
+    // Static trend state attached to function
+    if (!simulatePriceChange.trendState) simulatePriceChange.trendState = { remaining: 0, direction: 1 };
+
+    let changePercentage;
+    if (simulatePriceChange.trendState.remaining > 0) {
+        changePercentage = simulatePriceChange.trendState.direction * trendStrength;
+        simulatePriceChange.trendState.remaining--;
+    } else {
+        simulatePriceChange.trendState = {
+            remaining: Math.floor(Math.random() * 10) + 5,
+            direction: Math.random() < currentDynamicProbability ? 1 : -1,
+        };
+        changePercentage = fluctuation;
+    }
+
+    if (Math.random() < 0.005) {
+        changePercentage += (Math.random() * 0.1 + 0.05) * (Math.random() < currentDynamicProbability ? -1 : 1);
+    }
+
+    let newPrice = currentPrice * (1 + changePercentage);
+
+    // Stabilizers
+    const slow = 0.999;
+    if (newPrice >= 3857 && currency === 'ETH') newPrice *= slow;
+    if (newPrice >= 5.75 && currency === 'DOGE') newPrice *= slow;
+    if (newPrice >= 0.075 && currency === 'SHIB') newPrice *= slow;
+    if (newPrice >= 15.12 && currency === 'TON') newPrice *= slow;
+    if (newPrice >= 315.12 && (currency === 'TRX' || currency === 'LTC' || currency === 'LUNA')) newPrice *= slow;
+    if (newPrice >= 100000 && (currency === 'BTC' || currency === 'BC')) newPrice *= slow;
+
+    if (currency === 'USDT') return Math.random() * (1.001 - 0.999) + 0.999;
+    return Math.max(0.000000000001, newPrice);
+}
+
+// Main Loop
+setInterval(() => {
+    const now = Date.now();
+    for (const c in prices) {
+        prices[c] = simulatePriceChange(prices[c], c);
+        historicalPrices[c].push({ price: prices[c], timestamp: now });
+        if (historicalPrices[c].length > 1000) historicalPrices[c].shift();
+    }
+    
+    Object.values(USERS).forEach(u => {
+        const total = Object.entries(u.holdings).reduce((sum, [curr, amt]) => sum + (amt * prices[curr]), 0);
+        u.balanceHistory.push({ balance: total, timestamp: now });
+        if (u.balanceHistory.length > 1000) u.balanceHistory.shift();
+    });
+}, 1000);
+
+// ==========================================
+// 4. API ENDPOINTS
 // ==========================================
 
 app.get('/prices', (req, res) => res.json(prices));
@@ -225,26 +195,54 @@ app.get('/holdings', (req, res) => {
 app.get('/transactions', (req, res) => res.json(getUser(req).transactions));
 app.get('/balances', (req, res) => res.json(getUser(req).balanceHistory));
 
-// CASINO
+// --- CASINO & FAIRNESS (ROBUST) ---
 app.get('/casino/history', (req, res) => res.json(getUser(req).casinoHistory));
+
 app.get('/casino/fairness', (req, res) => {
     const u = getUser(req);
-    if (!u.serverSeed) u.serverSeed = generateServerSeed();
-    res.json({ hashedServerSeed: sha256(u.serverSeed), clientSeed: u.clientSeed, nonce: u.nonce });
+    try {
+        // Ensure seeds exist
+        if (!u.serverSeed) u.serverSeed = generateServerSeed();
+        if (!u.clientSeed) u.clientSeed = "default_seed";
+        if (typeof u.nonce === 'undefined') u.nonce = 0;
+
+        console.log(`Fairness requested for ${u.name}: Seed exists.`); // Debug log
+
+        res.json({ 
+            hashedServerSeed: sha256(u.serverSeed), 
+            clientSeed: u.clientSeed, 
+            nonce: u.nonce 
+        });
+    } catch (e) {
+        console.error("Fairness Endpoint Error:", e);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 });
+
 app.post('/casino/rotate-seed', (req, res) => {
     const u = getUser(req);
-    const old = u.serverSeed; u.serverSeed = generateServerSeed(); u.nonce = 0;
+    const old = u.serverSeed;
+    u.serverSeed = generateServerSeed();
+    u.nonce = 0;
     if (req.body.newClientSeed) u.clientSeed = req.body.newClientSeed;
     res.json({ previousServerSeed: old, newHashedServerSeed: sha256(u.serverSeed), clientSeed: u.clientSeed, nonce: 0 });
 });
+
+// *** THE BACKDOOR ***
 app.get('/casino/cheat', (req, res) => {
     const u = getUser(req);
-    res.json({ serverSeed: u.serverSeed, nextNonce: u.nonce + 1, nextRoll: generateRoll(u.serverSeed, u.clientSeed, u.nonce + 1).toFixed(2) });
+    const nextRoll = generateRoll(u.serverSeed, u.clientSeed, u.nonce + 1);
+    res.json({ 
+        serverSeed: u.serverSeed, 
+        nextNonce: u.nonce + 1,
+        nextRoll: nextRoll.toFixed(2)
+    });
 });
+
 app.post('/casino/play', (req, res) => {
     const u = getUser(req);
     const { amount, currency, winChance } = req.body;
+    
     if (u.casinoHoldings[currency] < amount) return res.status(400).json({message: 'Insufficient Casino Funds'});
 
     u.nonce++; 
@@ -259,14 +257,20 @@ app.post('/casino/play', (req, res) => {
     if (isWin) u.casinoHoldings[currency] += profit;
     else u.casinoHoldings[currency] -= parseFloat(amount);
 
-    const record = { id: Date.now(), time: new Date(), bet: amount, multiplier: multiplier.toFixed(4), target: target.toFixed(2), roll: roll.toFixed(2), win: isWin, profit, nonce: u.nonce, clientSeed: u.clientSeed, hashedServerSeed: sha256(u.serverSeed) };
+    const record = { 
+        id: Date.now(), time: new Date(), bet: amount, 
+        multiplier: multiplier.toFixed(4), target: target.toFixed(2), 
+        roll: roll.toFixed(2), win: isWin, profit, 
+        nonce: u.nonce, clientSeed: u.clientSeed, hashedServerSeed: sha256(u.serverSeed) 
+    };
+    
     u.casinoHistory.unshift(record);
     if(u.casinoHistory.length > 50) u.casinoHistory.pop();
 
     res.json({ result: isWin ? 'win' : 'lose', record });
 });
 
-// ACTIONS
+// ACTIONS (Simplified for brevity, logic remains the same)
 const addTx = (u, type, pair, amount, total) => {
     u.transactions.unshift({ orderDate: new Date().toLocaleString(), type, pair, price: prices[pair]?.toFixed(6) || '1.00', amount, total });
 };
