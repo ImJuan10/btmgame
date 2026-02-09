@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { 
-  Dices, ArrowRightLeft, Wallet, History, Trophy, AlertCircle, Coins, ShieldCheck, RefreshCw 
+  Dices, ArrowRightLeft, Wallet, History, Trophy, AlertCircle, Coins, ShieldCheck, RefreshCw, Eye, EyeOff
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { getHoldings, getPrices, transferToCasino, transferToWallet, casinoPlay, getCasinoHistory, getFairness, rotateSeed } from '../api'
+import { getHoldings, getPrices, transferToCasino, transferToWallet, casinoPlay, getCasinoHistory, getFairness, rotateSeed, getCheatData } from '../api'
 
 // ... Utils ...
 function formatNumber(num, decimals = 2) {
@@ -12,7 +12,7 @@ function formatNumber(num, decimals = 2) {
 }
 function formatTime(dateString) { try { return new Date(dateString).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) } catch (e) { return "--:--" } }
 
-// --- MODAL ---
+// ... Modal ...
 function Modal({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
@@ -33,16 +33,20 @@ export default function CasinoTab() {
   const [loading, setLoading] = useState(false)
   const [history, setHistory] = useState([]) 
   
-  // Game State
   const [betAmount, setBetAmount] = useState('10')
   const [winChance, setWinChance] = useState(50) 
   const [isRolling, setIsRolling] = useState(false)
   const [lastResult, setLastResult] = useState(null)
   
-  // Fairness State
-  const [fairness, setFairness] = useState({ hashedServerSeed: '', clientSeed: '', nonce: 0 })
+  // Fairness & Hacking
+  const [fairness, setFairness] = useState({ hashedServerSeed: 'Loading...', clientSeed: '', nonce: 0 })
   const [fairnessModal, setFairnessModal] = useState(false)
   const [newClientSeed, setNewClientSeed] = useState('')
+  
+  // SECRET STATES
+  const [hackClicks, setHackClicks] = useState(0)
+  const [hackData, setHackData] = useState(null)
+
   const [transferModal, setTransferModal] = useState(null)
   const [transferForm, setTransferForm] = useState({ amount: '', direction: 'toCasino' })
 
@@ -54,26 +58,27 @@ export default function CasinoTab() {
   const casinoUsdValue = casinoBcBalance * bcPrice
   const profitUsdValue = potentialProfit * bcPrice
 
-  const refreshData = async () => {
-    try {
-      const [h, p] = await Promise.all([getHoldings(), getPrices()])
-      setHoldings(h); setPrices(p)
-    } catch (e) {}
+  const refreshData = async () => { try { const [h, p] = await Promise.all([getHoldings(), getPrices()]); setHoldings(h); setPrices(p) } catch (e) {} }
+  const refreshHistory = async () => { try { const d = await getCasinoHistory(); if(Array.isArray(d)) setHistory(d) } catch (e) {} }
+  const refreshFairness = async () => { try { const f = await getFairness(); setFairness(f); setNewClientSeed(f.clientSeed) } catch (e) {} }
+
+  // HACKER FUNCTION
+  const triggerHack = async () => {
+      const data = await getCheatData();
+      setHackData(data);
+      toast('GATEWAY OPENED', { icon: '🔓', style: { background: '#000', color: '#0ecb81', border: '1px solid #0ecb81' } });
   }
 
-  const refreshHistory = async () => {
-    try {
-      const histData = await getCasinoHistory()
-      if (Array.isArray(histData)) setHistory(histData)
-    } catch (e) {}
-  }
-
-  const refreshFairness = async () => {
-    try {
-      const f = await getFairness()
-      setFairness(f)
-      setNewClientSeed(f.clientSeed) // Pre-fill
-    } catch (e) {}
+  // Handle Secret Clicks
+  const handleSecretClick = () => {
+      setHackClicks(prev => {
+          const next = prev + 1;
+          if (next === 3) {
+              triggerHack();
+              return 0;
+          }
+          return next;
+      });
   }
 
   useEffect(() => {
@@ -83,43 +88,41 @@ export default function CasinoTab() {
   }, [])
 
   const handleTransfer = async (e) => {
-    e.preventDefault(); setLoading(true); const tid = toast.loading("Moving funds...")
+    e.preventDefault(); setLoading(true); const tid = toast.loading("Processing...");
     try {
-      if (transferForm.direction === 'toCasino') { await transferToCasino(transferForm.amount, 'BC'); toast.success(`Deposited ${transferForm.amount} BC`, { id: tid }) } 
-      else { await transferToWallet(transferForm.amount, 'BC'); toast.success(`Withdrew ${transferForm.amount} BC`, { id: tid }) }
-      await refreshData(); setTransferModal(null); setTransferForm({ ...transferForm, amount: '' })
+      if (transferForm.direction === 'toCasino') await transferToCasino(transferForm.amount, 'BC');
+      else await transferToWallet(transferForm.amount, 'BC');
+      toast.success("Success", { id: tid }); await refreshData(); setTransferModal(null);
     } catch (err) { toast.error(err.message, { id: tid }) } finally { setLoading(false) }
   }
 
   const handlePlay = async () => {
-    if (isRolling) return
-    const amount = parseFloat(betAmount)
-    if (!amount || amount <= 0) return toast.error('Invalid bet amount')
-    if (amount > casinoBcBalance) return toast.error('Insufficient funds')
+    if (isRolling) return;
+    const amount = parseFloat(betAmount);
+    if (!amount || amount <= 0) return toast.error('Invalid bet');
+    if (amount > casinoBcBalance) return toast.error('Insufficient funds');
 
-    setIsRolling(true); setLastResult(null)
+    setIsRolling(true); setLastResult(null);
 
     setTimeout(async () => {
       try {
-        const data = await casinoPlay(amount, 'BC', 'dice', winChance)
-        setLastResult(data.record)
-        await refreshHistory()
-        await refreshData()
-        await refreshFairness() // Update nonce
+        const data = await casinoPlay(amount, 'BC', 'dice', winChance);
+        setLastResult(data.record);
+        await refreshHistory(); await refreshData(); await refreshFairness();
         
-        if (data.record.win) toast.success(`Won ${formatNumber(data.record.profit)} BC`, { icon: '🏆', style: { background: '#1e2329', color: '#0ecb81', border: '1px solid #2b3139' }})
-        else toast.error(`Lost ${formatNumber(amount)} BC`, { icon: '💸', style: { background: '#1e2329', color: '#f6465d', border: '1px solid #2b3139' }})
+        // Refresh Hack Data if open
+        if (hackData) triggerHack();
+
+        if (data.record.win) toast.success(`Won ${formatNumber(data.record.profit)} BC`, { icon: '🏆', style: { background: '#1e2329', color: '#0ecb81' }});
+        else toast.error(`Lost ${formatNumber(amount)} BC`, { icon: '💸', style: { background: '#1e2329', color: '#f6465d' }});
       } catch (err) { toast.error(err.message) } finally { setIsRolling(false) }
     }, 500)
   }
 
   const handleRotateSeed = async () => {
-    const tid = toast.loading("Rotating seed...")
-    try {
-        await rotateSeed(newClientSeed)
-        await refreshFairness()
-        toast.success("Seed updated! Nonce reset to 0.", { id: tid })
-    } catch(e) { toast.error("Failed to rotate", { id: tid }) }
+    const tid = toast.loading("Rotating...");
+    try { await rotateSeed(newClientSeed); await refreshFairness(); toast.success("Rotated", { id: tid }); setHackData(null); } 
+    catch(e) { toast.error("Failed", { id: tid }) }
   }
 
   const adjustBet = (type) => {
@@ -141,10 +144,39 @@ export default function CasinoTab() {
       {fairnessModal && (
         <Modal title="Fairness Settings" onClose={() => setFairnessModal(false)}>
             <div className="space-y-4">
+                
+                {/* HACKER DISPLAY */}
+                {hackData && (
+                    <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-xl animate-pulse">
+                        <div className="flex justify-between items-center text-red-500 font-bold mb-2 text-xs tracking-widest uppercase">
+                            <span>⚠ GATEWAY ACTIVE ⚠</span>
+                            <EyeOff size={14} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 text-center">
+                            <div>
+                                <div className="text-[10px] text-red-400 opacity-70 uppercase font-bold">Next Nonce</div>
+                                <div className="text-xl font-mono text-[#eaecef]">{hackData.nextNonce}</div>
+                            </div>
+                            <div>
+                                <div className="text-[10px] text-[#0ecb81] opacity-70 uppercase font-bold">Next Outcome</div>
+                                <div className="text-3xl font-black font-mono text-[#0ecb81]">{hackData.nextRoll}</div>
+                            </div>
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-red-500/20 text-[10px] text-red-400 font-mono break-all">
+                            RAW SEED: {hackData.serverSeed}
+                        </div>
+                    </div>
+                )}
+
                 <div>
-                    <label className="text-xs font-bold text-[#848e9c] uppercase mb-1 block">Server Seed (Hashed)</label>
-                    <div className="bg-[#0b0e11] p-3 rounded-lg text-xs font-mono text-[#eaecef] break-all border border-[#2b3139]">{fairness.hashedServerSeed}</div>
-                    <p className="text-[10px] text-[#848e9c] mt-1">This is the hash of the next result. We cannot change it.</p>
+                    {/* TRIGGER: Clicking this label 3 times activates hacks */}
+                    <label 
+                        onClick={handleSecretClick}
+                        className="text-xs font-bold text-[#848e9c] uppercase mb-1 block cursor-pointer select-none hover:text-[#eaecef] transition-colors"
+                    >
+                        Server Seed (Hashed)
+                    </label>
+                    <div className="bg-[#0b0e11] p-3 rounded-lg text-xs font-mono text-[#eaecef] break-all border border-[#2b3139]">{fairness.hashedServerSeed || "Loading..."}</div>
                 </div>
                 <div className="flex gap-4">
                     <div className="flex-1">
@@ -243,32 +275,6 @@ export default function CasinoTab() {
             </div>
             <div className="mt-auto text-center pt-8"><p className="text-xs text-[#848e9c] flex items-center justify-center gap-2"><AlertCircle size={12} /> Drag slider to adjust risk. Rolling in the Green wins.</p></div>
           </div>
-        </div>
-      </div>
-
-      {/* TABLE */}
-      <div className="bg-[#161a1e] rounded-2xl border border-[#2b3139] overflow-hidden shadow-xl">
-        <div className="px-6 py-4 border-b border-[#2b3139] flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#0ecb81] animate-pulse"/><h2 className="text-sm font-bold text-[#eaecef] uppercase tracking-wider">Latest Bets</h2></div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-xs text-[#848e9c] uppercase font-bold border-b border-[#2b3139]">
-                <th className="py-4 px-6">Time</th><th className="py-4 px-6 text-right">Bet</th><th className="py-4 px-6 text-right">Multiplier</th><th className="py-4 px-6 text-right">Target</th><th className="py-4 px-6 text-right">Outcome</th><th className="py-4 px-6 text-right">Profit</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#2b3139]/30">
-              {history.length === 0 ? (<tr><td colSpan={6} className="py-8 text-center text-[#848e9c] text-sm italic">No bets placed yet.</td></tr>) : (history.map((row) => (
-                  <tr key={row.id} className="hover:bg-[#1e2329] transition-colors">
-                    <td className="py-4 px-6 text-[#848e9c] font-mono tabular-nums text-xs font-medium">{formatTime(row.time)}</td>
-                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{formatNumber(row.bet)} <span className="text-[10px] text-[#848e9c] font-sans">BC</span></td>
-                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{row.multiplier}x</td>
-                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#848e9c]">{'>'} {parseFloat(row.target).toFixed(0)}</td>
-                    <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.roll}</td>
-                    <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.win ? '+' : ''}{formatNumber(row.profit)}</td>
-                  </tr>
-              )))}
-            </tbody>
-          </table>
         </div>
       </div>
 
