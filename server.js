@@ -12,15 +12,15 @@ app.use(express.json());
 // ==========================================
 
 let prices = {
-    BTC: 0.89,
+    BTC: 0.00089,
     ETH: 0.32,
-    DOGE: 0.00869,
+    DOGE: 0.0000869,
     SHIB: 0.000007,
-    TON: 0.039,
-    TRX: 0.008,
-    LTC: 0.11,
-    LUNA: 0.35,
-    BC: 0.01,
+    TON: 0.39,
+    TRX: 0.08,
+    LTC: 1.1,
+    LUNA: 1.35,
+    BC: 0.0001,
     USDT: 1,
 };
 
@@ -85,6 +85,7 @@ function simulatePriceChange(currentPrice, currency) {
             currentDynamicProbability = probabilityState.endTransitionProb * marketHackMultiplier;
             probabilityState.transitioning = false;
             probabilityState.duration = generateRandomDuration();
+            probabilityState.remainingTime = probabilityState.duration; // Reset remaining time
         } else {
             const progress = probabilityState.transitionElapsedTime / probabilityState.transitionDuration;
             currentDynamicProbability = (probabilityState.startTransitionProb + (probabilityState.endTransitionProb - probabilityState.startTransitionProb) * progress) * marketHackMultiplier;
@@ -140,14 +141,20 @@ setInterval(() => {
     const now = Date.now();
     for (const c in prices) {
         prices[c] = simulatePriceChange(prices[c], c);
+        
+        // Push to history
         historicalPrices[c].push({ price: prices[c], timestamp: now });
-        if (historicalPrices[c].length > 1000) historicalPrices[c].shift();
+        
+        // LIMIT INCREASED TO 50,000 (Approx 14 hours) - Data won't flush quickly
+        if (historicalPrices[c].length > 50000) historicalPrices[c].shift();
     }
-    // Update Balances
+    
+    // Update User Balance History
     Object.values(USERS).forEach(u => {
         const total = Object.entries(u.holdings).reduce((sum, [curr, amt]) => sum + (amt * prices[curr]), 0);
         u.balanceHistory.push({ balance: total, timestamp: now });
-        if (u.balanceHistory.length > 1000) u.balanceHistory.shift();
+        // LIMIT INCREASED TO 50,000
+        if (u.balanceHistory.length > 50000) u.balanceHistory.shift();
     });
 }, 1000);
 
@@ -173,8 +180,8 @@ const USERS = {
     'user_1': {
         name: "Whale Trader",
         // Init based on original prices keys
-        holdings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='USDT'?1:c==='BC'?0:0])) },
-        casinoHoldings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='BC'?0:0])) },
+        holdings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='USDT'?50000:c==='BC'?1000:0])) },
+        casinoHoldings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='BC'?500:0])) },
         addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
         serverSeed: generateServerSeed(), clientSeed: "lucky_client", nonce: 0
     },
@@ -222,6 +229,7 @@ app.post('/casino/play', (req, res) => {
     const u = getUser(req);
     const { amount, currency, game, winChance, min, max } = req.body;
     
+    // Safety check for undefined balances
     if (!u.casinoHoldings[currency]) u.casinoHoldings[currency] = 0;
     if (u.casinoHoldings[currency] < amount) return res.status(400).json({message: `Insufficient ${currency}`});
 
@@ -237,7 +245,7 @@ app.post('/casino/play', (req, res) => {
         const rangeMin = parseFloat(min);
         const rangeMax = parseFloat(max);
         
-        // Fix: Range size is inclusive. 50-50 is 1 number.
+        // Range size is inclusive.
         const rangeSize = (rangeMax - rangeMin) + 1;
         if (rangeSize < 1) return res.status(400).json({message: "Invalid Range"});
 
