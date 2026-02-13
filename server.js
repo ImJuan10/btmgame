@@ -188,7 +188,7 @@ app.post('/swap', (req, res) => {
 
     u.holdings[from] -= parseFloat(amount);
     u.holdings[to] += receive;
-    addTx(u, 'Swap', `${from} -> ${to}`, `-${amount} ${from}`, `+${receive.toFixed(6)} ${to}`);
+    addTx(u, 'Swap', `${from}/${to}`, `-${amount} ${from}`, `+${receive.toFixed(6)} ${to}`);
     res.json({ message: 'Swapped' });
 });
 
