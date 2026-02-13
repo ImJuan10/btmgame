@@ -16,8 +16,8 @@ const historicalPrices = {};
 COINS.forEach(c => historicalPrices[c] = []);
 
 let prices = {
-    BTC: 0.00089, ETH: 0.32, DOGE: 0.0000869, SHIB: 0.000007, TON: 0.39,
-    TRX: 0.08, LTC: 1.1, LUNA: 1.35, BC: 0.0001, USDT: 1,
+    BTC: 1.12, ETH: 3.2, DOGE: 0.00869, SHIB: 0.0007, TON: 3.9,
+    TRX: 0.8, LTC: 0.15, LUNA: 0.135, BC: 0.11, USDT: 1,
 };
 
 let marketHackMultiplier = 1;
