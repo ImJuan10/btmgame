@@ -12,19 +12,18 @@ app.use(express.json());
 // ==========================================
 
 let prices = {
-    BTC: 1.1,
+    BTC: 0.00089,
     ETH: 0.32,
-    DOGE: 0.0869,
+    DOGE: 0.0000869,
     SHIB: 0.000007,
     TON: 0.39,
     TRX: 0.08,
-    LTC: 0.11,
-    LUNA: 0.35,
-    BC: 0.14,
+    LTC: 1.1,
+    LUNA: 1.35,
+    BC: 0.0001,
     USDT: 1,
 };
 
-// Global History (fixes snaking)
 const historicalPrices = {};
 Object.keys(prices).forEach(c => historicalPrices[c] = []);
 
@@ -44,16 +43,14 @@ let probabilityState = {
 };
 
 function generateRandomDuration() {
-    return Math.floor(Math.random() * (45 - 30 + 1)) + 30; // Between 30 and 45 seconds
+    return Math.floor(Math.random() * (45 - 30 + 1)) + 30;
 }
 
 function simulatePriceChange(currentPrice, currency) {
-    // Configuration for trends (Restored)
     let trendDirection = Math.random() < 0.55 ? 1 : -1;
     let trendLength = Math.floor(Math.random() * 10) + 5;
     let trendStrength = Math.random() * 0.02 + 0.01;
 
-    // Update dynamic probability logic
     const currentTime = Date.now();
     const elapsedSinceLastUpdate = (currentTime - probabilityState.startTime) / 1000;
 
@@ -93,7 +90,6 @@ function simulatePriceChange(currentPrice, currency) {
     const spikeProbability = 0.005;
     const spikeMagnitude = Math.random() * 0.1 + 0.05;
 
-    // Persist Trend State on the Function Object
     if (!simulatePriceChange.trendState) {
         simulatePriceChange.trendState = {
             remaining: trendLength,
@@ -120,7 +116,6 @@ function simulatePriceChange(currentPrice, currency) {
 
     let newPrice = currentPrice * (1 + changePercentage);
 
-    // Stabilizers (Restored)
     const slow = 0.999;
     if (newPrice >= 3857 && currency === 'ETH') newPrice *= slow;
     if (newPrice >= 5.75 && currency === 'DOGE') newPrice *= slow;
@@ -133,7 +128,6 @@ function simulatePriceChange(currentPrice, currency) {
     return Math.max(newPrice, 0.0000000000001);
 }
 
-// === MAIN LOOP ===
 setInterval(() => {
     const now = Date.now();
     for (const c in prices) {
@@ -142,7 +136,6 @@ setInterval(() => {
         if (historicalPrices[c].length > 1000) historicalPrices[c].shift();
     }
     
-    // Balance Updates
     Object.values(USERS).forEach(u => {
         const total = Object.entries(u.holdings).reduce((sum, [curr, amt]) => sum + (amt * prices[curr]), 0);
         u.balanceHistory.push({ balance: total, timestamp: now });
@@ -170,7 +163,6 @@ const generateRoll = (serverSeed, clientSeed, nonce) => {
 const USERS = {
     'user_1': {
         name: "Whale Trader",
-        // Init all coins
         holdings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='USDT'?50000:c==='BC'?1000:0])) },
         casinoHoldings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='BC'?500:0])) },
         addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
@@ -222,7 +214,6 @@ app.post('/casino/play', (req, res) => {
     const u = getUser(req);
     const { amount, currency, game, winChance, min, max } = req.body;
     
-    // Ensure casino holding exists
     if (!u.casinoHoldings[currency]) u.casinoHoldings[currency] = 0;
     
     if (u.casinoHoldings[currency] < amount) return res.status(400).json({message: `Insufficient ${currency}`});
@@ -255,7 +246,22 @@ app.post('/casino/play', (req, res) => {
     if (isWin) u.casinoHoldings[currency] += profit;
     else u.casinoHoldings[currency] -= parseFloat(amount);
 
-    const record = { id: Date.now(), time: new Date(), bet: amount, multiplier: multiplier.toFixed(4), target: targetDisplay, roll: roll.toFixed(2), win: isWin, profit, currency, nonce: u.nonce, clientSeed: u.clientSeed, hashedServerSeed: sha256(u.serverSeed) };
+    const record = { 
+        id: Date.now(), 
+        time: new Date(), 
+        bet: amount, 
+        multiplier: multiplier.toFixed(4), 
+        target: targetDisplay, 
+        roll: roll.toFixed(2), 
+        win: isWin, 
+        profit, 
+        currency, 
+        game: game, // <--- THIS IS THE KEY FIX: SAVING THE GAME TYPE
+        nonce: u.nonce, 
+        clientSeed: u.clientSeed, 
+        hashedServerSeed: sha256(u.serverSeed) 
+    };
+    
     u.casinoHistory.unshift(record);
     if(u.casinoHistory.length > 50) u.casinoHistory.pop();
 
