@@ -12,8 +12,8 @@ app.use(express.json());
 // ==========================================
 
 let prices = {
-    BTC: 0.00089, ETH: 0.32, DOGE: 0.0000869, SHIB: 0.000007, TON: 0.39,
-    TRX: 0.08, LTC: 1.1, LUNA: 1.35, BC: 0.0001, USDT: 1,
+    BTC: 0.89, ETH: 32, DOGE: 0.00869, SHIB: 0.00007, TON: 0.039,
+    TRX: 0.008, LTC: 1.1, LUNA: 1.35, BC: 0.1, USDT: 1,
 };
 
 const historicalPrices = {};
@@ -79,7 +79,7 @@ function simulatePriceChange(currentPrice, currency) {
     
     // Stabilizers
     const slow = 0.999;
-    if (newPrice >= 3857 && currency === 'ETH') newPrice *= slow;
+    if (newPrice >= 38579 && currency === 'ETH') newPrice *= slow;
     if (newPrice >= 5.75 && currency === 'DOGE') newPrice *= slow;
     if (newPrice >= 0.075 && currency === 'SHIB') newPrice *= slow;
     if (newPrice >= 15.12 && currency === 'TON') newPrice *= slow;
