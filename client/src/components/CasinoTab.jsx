@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { 
-  Dices, ArrowRightLeft, Wallet, History, Trophy, AlertCircle, Coins, ShieldCheck, RefreshCw, EyeOff, Lock, ChevronDown
+  Dices, ArrowRightLeft, Wallet, History, Trophy, AlertCircle, Coins, ShieldCheck, RefreshCw, EyeOff, Lock, ChevronDown, Check
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getHoldings, getPrices, transferToCasino, transferToWallet, casinoPlay, getCasinoHistory, getFairness, rotateSeed, getCheatData } from '../api'
@@ -15,7 +15,7 @@ function formatNumber(num, decimals = 2) {
 
 function formatTime(dateString) { try { return new Date(dateString).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) } catch (e) { return "--:--" } }
 
-// NEW: Floor function that prevents rounding up errors (e.g. 9.999 -> 9.99 instead of 10.00)
+// Floor function to prevent rounding errors
 function floorAmount(amount, decimals = 6) {
     if (!amount) return '0';
     const factor = Math.pow(10, decimals);
@@ -45,6 +45,7 @@ export default function CasinoTab() {
   
   // Game State
   const [activeCoin, setActiveCoin] = useState('BC') 
+  const [isCoinListOpen, setIsCoinListOpen] = useState(false) // For custom dropdown
   const [betAmount, setBetAmount] = useState('10')
   const [winChance, setWinChance] = useState(50) 
   const [isRolling, setIsRolling] = useState(false)
@@ -61,7 +62,7 @@ export default function CasinoTab() {
   const [transferModal, setTransferModal] = useState(null)
   const [transferForm, setTransferForm] = useState({ amount: '', direction: 'toCasino' })
 
-  // Derived Values based on ACTIVE COIN
+  // Derived Values
   const currentPrice = prices[activeCoin] || 0;
   const casinoBalance = holdings.casino?.[activeCoin] ?? 0;
   const walletBalance = holdings.wallet?.[activeCoin] ?? 0;
@@ -72,6 +73,19 @@ export default function CasinoTab() {
   
   const casinoUsdValue = casinoBalance * currentPrice
   const profitUsdValue = potentialProfit * currentPrice
+
+  const dropdownRef = useRef(null)
+
+  // Close dropdown if clicked outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsCoinListOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [dropdownRef]);
 
   // Data Fetching
   const refreshData = async () => { try { const [h, p] = await Promise.all([getHoldings(), getPrices()]); setHoldings(h); setPrices(p) } catch (e) {} }
@@ -137,7 +151,6 @@ export default function CasinoTab() {
     if (type === 'min') setBetAmount('0.0001'); 
     if (type === 'half') setBetAmount(floorAmount(current / 2, 6));
     if (type === 'double') setBetAmount(floorAmount(current * 2, 6)); 
-    // FIX: Use floorAmount to prevent floating point rounding errors
     if (type === 'max') setBetAmount(floorAmount(casinoBalance, 6)); 
   }
 
@@ -178,37 +191,70 @@ export default function CasinoTab() {
         </Modal>
       )}
 
-      {/* BANKROLL */}
+      {/* BANKROLL CARD - REDESIGNED */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-2 rounded-2xl border border-[#2b3139] bg-[#161a1e] p-6 relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Trophy size={100} className="text-[#f3ba2f]" /></div>
-          <div className="relative z-10">
-            <p className="text-[#848e9c] text-xs font-bold uppercase tracking-widest mb-2 flex items-center gap-2"><Wallet size={14} /> Casino Balance</p>
-            
-            {/* COIN SELECTOR */}
-            <div className="flex items-center gap-2 mb-2">
-                <div className="relative">
-                    <select 
-                        value={activeCoin} 
-                        onChange={(e) => { setActiveCoin(e.target.value); setBetAmount('0'); }}
-                        className="appearance-none bg-[#2b3139] border border-[#2b3139] text-[#eaecef] font-bold py-1 px-3 pr-8 rounded-lg text-sm outline-none focus:border-[#f3ba2f] cursor-pointer"
+          
+          <div className="relative z-10 flex flex-col h-full justify-between">
+            {/* Top Row: Label and Custom Coin Picker */}
+            <div className="flex items-start justify-between">
+                <p className="text-[#848e9c] text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                    <Wallet size={14} /> Casino Balance
+                </p>
+
+                {/* CUSTOM NON-INVASIVE COIN PICKER */}
+                <div className="relative" ref={dropdownRef}>
+                    <button 
+                        onClick={() => setIsCoinListOpen(!isCoinListOpen)}
+                        className="flex items-center gap-2 bg-[#0b0e11] border border-[#2b3139] hover:border-[#474d57] text-[#eaecef] px-3 py-1.5 rounded-lg text-sm font-bold transition-all"
                     >
-                        {COINS.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[#848e9c]" />
+                        <Coins size={14} className="text-[#f3ba2f]" />
+                        {activeCoin}
+                        <ChevronDown size={14} className={`text-[#848e9c] transition-transform ${isCoinListOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    {isCoinListOpen && (
+                        <div className="absolute right-0 top-full mt-2 w-40 bg-[#1e2329] border border-[#2b3139] rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto">
+                            <div className="p-1">
+                                {COINS.map(c => (
+                                    <button
+                                        key={c}
+                                        onClick={() => { setActiveCoin(c); setIsCoinListOpen(false); setBetAmount('0'); }}
+                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold flex items-center justify-between transition-colors ${activeCoin === c ? 'bg-[#2b3139] text-[#f3ba2f]' : 'text-[#848e9c] hover:bg-[#2b3139] hover:text-[#eaecef]'}`}
+                                    >
+                                        {c}
+                                        {activeCoin === c && <Check size={14} />}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
-                {/* DISPLAY 6 DECIMALS to verify fix */}
-                <div className="text-4xl font-black text-[#f3ba2f] font-mono tracking-tight tabular-nums">{formatNumber(casinoBalance, 6)}</div>
             </div>
-            
-            <div className="text-sm font-medium text-[#848e9c] mt-1 font-mono">≈ ${formatNumber(casinoUsdValue, 2)}</div>
-            <div className="mt-4 flex gap-3">
-              <button onClick={() => { setTransferForm({direction: 'toCasino', amount: ''}); setTransferModal(true) }} className="px-4 py-2 bg-[#2b3139] hover:bg-[#363c45] text-[#eaecef] rounded-lg text-xs font-bold uppercase border border-[#474d57] transition-all active:scale-95 flex items-center gap-2">
-                <ArrowRightLeft size={14} /> Deposit
+
+            {/* Middle Row: Big Balance Display */}
+            <div className="mt-4 mb-4">
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-black text-[#f3ba2f] font-mono tracking-tight tabular-nums">
+                  {formatNumber(casinoBalance, 6)}
+                </span>
+                <span className="text-xl text-[#eaecef] font-bold">{activeCoin}</span>
+              </div>
+              <div className="text-sm font-medium text-[#848e9c] mt-1 font-mono">≈ ${formatNumber(casinoUsdValue, 2)}</div>
+            </div>
+
+            {/* Bottom Row: Deposit Button */}
+            <div>
+              <button onClick={() => { setTransferForm({direction: 'toCasino', amount: ''}); setTransferModal(true) }} className="px-5 py-2.5 bg-[#2b3139] hover:bg-[#363c45] text-[#eaecef] rounded-xl text-xs font-bold uppercase border border-[#474d57] transition-all active:scale-95 flex items-center gap-2">
+                <ArrowRightLeft size={14} /> Deposit / Withdraw
               </button>
             </div>
           </div>
         </div>
+
+        {/* History Bar */}
         <div className="rounded-2xl border border-[#2b3139] bg-[#161a1e] p-4 flex flex-col min-h-[140px]">
           <p className="text-[#848e9c] text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2"><History size={14} /> Recent Rolls</p>
           <div className="flex-1 flex gap-2 overflow-x-auto items-center md:flex-wrap content-start scrollbar-hide">
@@ -298,6 +344,7 @@ export default function CasinoTab() {
         </div>
       </div>
 
+      {/* TRANSFER MODAL */}
       {transferModal && (
         <Modal title="Wallet Transfer" onClose={() => setTransferModal(null)}>
           <form onSubmit={handleTransfer} className="space-y-6">
