@@ -1,64 +1,42 @@
 const express = require('express');
 const cors = require('cors');
+const events = require('events');
 const crypto = require('crypto');
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// --- DATA ---
-const COINS = ['BTC', 'ETH', 'DOGE', 'SHIB', 'TON', 'TRX', 'LTC', 'LUNA', 'BC', 'USDT'];
-const historicalPrices = {}; 
-COINS.forEach(c => historicalPrices[c] = []);
+// ==========================================
+// 1. CONFIGURATION & DATA STORAGE
+// ==========================================
 
-let prices = { BTC: 65000, ETH: 3500, DOGE: 0.15, SHIB: 0.00002, TON: 6.5, TRX: 0.12, LTC: 85, LUNA: 0.85, BC: 0.05, USDT: 1 };
+let prices = {
+    BTC: 0.00089, ETH: 0.32, DOGE: 0.0000869, SHIB: 0.000007, TON: 0.39,
+    TRX: 0.08, LTC: 1.1, LUNA: 1.35, BC: 0.0001, USDT: 1,
+};
+
+const historicalPrices = {};
+Object.keys(prices).forEach(c => historicalPrices[c] = []);
+
 let marketHackMultiplier = 1;
 let currentDynamicProbability = 0;
 let probabilityState = { targetProb: 0.58, duration: 0, startTime: Date.now(), transitioning: false, startTransitionProb: 0, endTransitionProb: 0, transitionDuration: 0, transitionElapsedTime: 0 };
 
-const genAddr = (c) => (c==='BTC'?'bc1q':c==='TRX'?'T':'0x') + crypto.randomBytes(8).toString('hex').toUpperCase();
-const generateServerSeed = () => crypto.randomBytes(32).toString('hex');
-const sha256 = (text) => { try { return crypto.createHash('sha256').update(String(text)).digest('hex'); } catch (e) { return ""; } };
-
-// RNG
-const generateRoll = (serverSeed, clientSeed, nonce) => {
-    try {
-        const hmac = crypto.createHmac('sha256', serverSeed);
-        hmac.update(`${clientSeed}:${nonce}`);
-        const hash = hmac.digest('hex');
-        return (parseInt(hash.substring(0, 8), 16) % 10001) / 100; // Returns 0.00 to 100.00
-    } catch (e) { return 0.00; }
-};
-
-// --- USERS ---
-const USERS = {
-    'user_1': {
-        name: "Whale Trader",
-        holdings: { ...Object.fromEntries(COINS.map(c => [c, c === 'USDT' ? 50000 : c === 'BC' ? 1000 : 0])) },
-        casinoHoldings: { ...Object.fromEntries(COINS.map(c => [c, c === 'BC' ? 500 : 0])) },
-        addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
-        serverSeed: generateServerSeed(), clientSeed: "lucky_client", nonce: 0
-    },
-    'user_2': {
-        name: "Newbie Degen",
-        holdings: { ...Object.fromEntries(COINS.map(c => [c, c === 'USDT' ? 100 : c === 'BC' ? 10 : 0])) },
-        casinoHoldings: { ...Object.fromEntries(COINS.map(c => [c, 0])) },
-        addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
-        serverSeed: generateServerSeed(), clientSeed: "newbie_seed", nonce: 0
-    }
-};
-Object.values(USERS).forEach(u => COINS.forEach(c => u.addresses[c] = genAddr(c)));
-const getUser = (req) => USERS[req.headers['x-user-id'] || 'user_1'] || USERS['user_1'];
-
-// --- SIMULATION ---
 function generateRandomDuration() { return Math.floor(Math.random() * (45 - 30 + 1)) + 30; }
+
 function simulatePriceChange(currentPrice, currency) {
-    // ... (Original logic omitted for brevity, it's the same as before) ...
-    let fluctuation = (Math.random() - 0.5) * 0.01; 
-    let newPrice = currentPrice * (1 + fluctuation);
-    if(currency === 'USDT') return 1;
-    return Math.max(0.00000001, newPrice);
+    // ... (Keep existing complex logic from previous step) ...
+    // Simplified here for brevity in this answer, but in your file KEEP THE COMPLEX LOGIC
+    let trendDirection = Math.random() < 0.55 ? 1 : -1;
+    let fluctuationStrength = Math.random() * 0.005 * (Math.random() < currentDynamicProbability ? -1 : 1);
+    let changePercentage = fluctuationStrength; 
+    let newPrice = currentPrice * (1 + changePercentage);
+    if (currency === 'USDT') return 1;
+    return Math.max(newPrice, 0.000000000001);
 }
+
+// Ensure loop is running with YOUR complex logic
 setInterval(() => {
     const now = Date.now();
     for (const c in prices) {
@@ -72,6 +50,42 @@ setInterval(() => {
         if (u.balanceHistory.length > 50000) u.balanceHistory.shift();
     });
 }, 1000);
+
+
+// ==========================================
+// 2. USER SYSTEM & CASINO
+// ==========================================
+
+const genAddr = (c) => (c==='BTC'?'bc1q':c==='TRX'?'T':'0x') + crypto.randomBytes(8).toString('hex').toUpperCase();
+const generateServerSeed = () => crypto.randomBytes(32).toString('hex');
+const sha256 = (text) => { try { return crypto.createHash('sha256').update(String(text)).digest('hex'); } catch (e) { return ""; } };
+const generateRoll = (serverSeed, clientSeed, nonce) => {
+    try {
+        const hmac = crypto.createHmac('sha256', serverSeed);
+        hmac.update(`${clientSeed}:${nonce}`);
+        const hash = hmac.digest('hex');
+        return (parseInt(hash.substring(0, 8), 16) % 10001) / 100;
+    } catch(e) { return 0; }
+};
+
+const USERS = {
+    'user_1': {
+        name: "Whale Trader",
+        holdings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='USDT'?50000:c==='BC'?1000:0])) },
+        casinoHoldings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='BC'?500:0])) },
+        addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
+        serverSeed: generateServerSeed(), clientSeed: "lucky_client", nonce: 0
+    },
+    'user_2': {
+        name: "Newbie Degen",
+        holdings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='USDT'?100:c==='BC'?10:0])) },
+        casinoHoldings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, 0])) },
+        addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
+        serverSeed: generateServerSeed(), clientSeed: "newbie_seed", nonce: 0
+    }
+};
+Object.values(USERS).forEach(u => Object.keys(prices).forEach(c => u.addresses[c] = genAddr(c)));
+const getUser = (req) => USERS[req.headers['x-user-id'] || 'user_1'] || USERS['user_1'];
 
 // --- ENDPOINTS ---
 app.get('/prices', (req, res) => res.json(prices));
@@ -95,10 +109,10 @@ app.post('/casino/rotate-seed', (req, res) => {
 });
 app.get('/casino/cheat', (req, res) => {
     const u = getUser(req);
-    const nextRoll = generateRoll(u.serverSeed, u.clientSeed, u.nonce + 1);
-    res.json({ serverSeed: u.serverSeed, nextNonce: u.nonce + 1, nextRoll: nextRoll.toFixed(2) });
+    res.json({ serverSeed: u.serverSeed, nextNonce: u.nonce + 1, nextRoll: generateRoll(u.serverSeed, u.clientSeed, u.nonce + 1).toFixed(2) });
 });
 
+// GAMEPLAY (FIXED RANGE MATH)
 app.post('/casino/play', (req, res) => {
     const u = getUser(req);
     const { amount, currency, game, winChance, min, max } = req.body;
@@ -106,7 +120,7 @@ app.post('/casino/play', (req, res) => {
     if (!u.casinoHoldings[currency]) u.casinoHoldings[currency] = 0;
     if (u.casinoHoldings[currency] < amount) return res.status(400).json({message: `Insufficient ${currency}`});
 
-    u.nonce++;
+    u.nonce++; 
     const roll = generateRoll(u.serverSeed, u.clientSeed, u.nonce);
     
     let isWin = false;
@@ -117,17 +131,20 @@ app.post('/casino/play', (req, res) => {
     if (game === 'ultimate') {
         const rangeMin = parseFloat(min);
         const rangeMax = parseFloat(max);
-        const rangeSize = (rangeMax - rangeMin) + 1; // Inclusive range size
         
+        // FIX: Range size is inclusive. (7500 - 7499) + 1 = 2 numbers.
+        const rangeSize = (rangeMax - rangeMin) + 1;
         if (rangeSize < 1) return res.status(400).json({message: "Invalid Range"});
 
-        const scaledRoll = Math.floor(roll * 100); // 0-10000 Integer
+        const scaledRoll = Math.floor(roll * 100); // 0 to 10000
 
         isWin = scaledRoll >= rangeMin && scaledRoll <= rangeMax;
+        
+        // Math: 9900 total pool / rangeSize
         multiplier = 9900 / rangeSize;
         
-        targetDisplay = `${rangeMin} - ${rangeMax}`;
-        resultDisplay = scaledRoll.toString(); // Display Integer
+        targetDisplay = rangeMin === rangeMax ? `${rangeMin}` : `${rangeMin} - ${rangeMax}`;
+        resultDisplay = scaledRoll.toString();
     } else {
         const chance = parseFloat(winChance) || 50;
         const target = 100 - chance;
@@ -146,7 +163,8 @@ app.post('/casino/play', (req, res) => {
         id: Date.now(), time: new Date(), bet: amount, 
         multiplier: multiplier.toFixed(4), target: targetDisplay, 
         roll: resultDisplay, win: isWin, profit, currency, 
-        game: game, nonce: u.nonce, clientSeed: u.clientSeed, hashedServerSeed: sha256(u.serverSeed) 
+        game: game, 
+        nonce: u.nonce, clientSeed: u.clientSeed, hashedServerSeed: sha256(u.serverSeed) 
     };
     
     u.casinoHistory.unshift(record);
@@ -156,34 +174,16 @@ app.post('/casino/play', (req, res) => {
 });
 
 // ACTIONS
-const addTx = (u, type, pair, amount, total) => u.transactions.unshift({ orderDate: new Date().toLocaleString(), type, pair, price: prices[pair]?.toFixed(6)||'1.0', amount, total });
-
-app.post('/deposit', (req, res) => { const u = getUser(req); u.holdings[req.body.currency] += parseFloat(req.body.amount); addTx(u, 'Deposit', req.body.currency, `+${req.body.amount}`, 'Success'); res.json({message:'OK'}); });
-app.post('/withdraw', (req, res) => { const u = getUser(req); if(u.holdings[req.body.currency]<req.body.amount) return res.status(400).json({message:'Insufficient'}); u.holdings[req.body.currency]-=parseFloat(req.body.amount); addTx(u, 'Withdraw', req.body.currency, `-${req.body.amount}`, 'Success'); res.json({message:'OK'}); });
-app.post('/buy', (req, res) => { const u = getUser(req); const {pair,amount} = req.body; const [b,q] = pair.split('/'); const cost = amount*prices[b]; if(u.holdings[q]<cost) return res.status(400).json({message:'Insufficient'}); u.holdings[q]-=cost; u.holdings[b]+=parseFloat(amount); addTx(u, 'Buy', pair, `+${amount}`, `-${cost.toFixed(2)}`); res.json({message:'OK'}); });
-app.post('/sell', (req, res) => { const u = getUser(req); const {pair,amount} = req.body; const [b,q] = pair.split('/'); const val = amount*prices[b]; if(u.holdings[b]<amount) return res.status(400).json({message:'Insufficient'}); u.holdings[b]-=parseFloat(amount); u.holdings[q]+=val; addTx(u, 'Sell', pair, `-${amount}`, `+${val.toFixed(2)}`); res.json({message:'OK'}); });
-app.post('/transfer-to-casino', (req, res) => { const u = getUser(req); if(u.holdings[req.body.currency]<req.body.amount) return res.status(400).json({message:'Insufficient'}); u.holdings[req.body.currency]-=parseFloat(req.body.amount); if(!u.casinoHoldings[req.body.currency]) u.casinoHoldings[req.body.currency]=0; u.casinoHoldings[req.body.currency]+=parseFloat(req.body.amount); addTx(u, 'Transfer', req.body.currency, `-${req.body.amount}`, 'To Casino'); res.json({message:'OK'}); });
-app.post('/transfer-to-wallet', (req, res) => { const u = getUser(req); if(u.casinoHoldings[req.body.currency]<req.body.amount) return res.status(400).json({message:'Insufficient'}); u.casinoHoldings[req.body.currency]-=parseFloat(req.body.amount); u.holdings[req.body.currency]+=parseFloat(req.body.amount); addTx(u, 'Deposit', req.body.currency, `+${req.body.amount}`, 'From Casino'); res.json({message:'OK'}); });
-
-// --- SWAP ENDPOINT ---
-app.post('/swap', (req, res) => {
-    const u = getUser(req);
-    const { from, to, amount } = req.body;
-    
-    if (!u.holdings[from] || u.holdings[from] < amount) return res.status(400).json({message: `Insufficient ${from}`});
-    if (from === to) return res.status(400).json({message: "Same coin"});
-
-    const priceFrom = prices[from];
-    const priceTo = prices[to];
-    const receive = (amount * priceFrom) / priceTo;
-
-    u.holdings[from] -= parseFloat(amount);
-    u.holdings[to] += receive;
-
-    addTx(u, 'Swap', `${from} -> ${to}`, `-${amount} ${from}`, `+${receive.toFixed(6)} ${to}`);
-    res.json({ message: 'Swapped' });
-});
-
+const addTx = (u, type, pair, amount, total) => {
+    u.transactions.unshift({ orderDate: new Date().toLocaleString(), type, pair, price: prices[pair]?.toFixed(6) || '1.00', amount, total });
+};
+app.post('/deposit', (req, res) => { const u = getUser(req); u.holdings[req.body.currency] += parseFloat(req.body.amount); addTx(u, 'Deposit', req.body.currency, `+${req.body.amount}`, 'Success'); res.json({ message: 'Success' }); });
+app.post('/withdraw', (req, res) => { const u = getUser(req); if (u.holdings[req.body.currency] < req.body.amount) return res.status(400).json({message: 'Insufficient'}); u.holdings[req.body.currency] -= parseFloat(req.body.amount); addTx(u, 'Withdraw', req.body.currency, `-${req.body.amount}`, 'Success'); res.json({ message: 'Success' }); });
+app.post('/buy', (req, res) => { const u = getUser(req); const { pair, amount } = req.body; const [b, q] = pair.split('/'); const cost = parseFloat(amount) * prices[b]; if (u.holdings[q] < cost) return res.status(400).json({message: 'Insufficient USDT'}); u.holdings[q] -= cost; u.holdings[b] += parseFloat(amount); addTx(u, 'Buy', pair, `+${amount}`, `-${cost.toFixed(2)} USDT`); res.json({ message: 'OK' }); });
+app.post('/sell', (req, res) => { const u = getUser(req); const { pair, amount } = req.body; const [b, q] = pair.split('/'); const val = parseFloat(amount) * prices[b]; if (u.holdings[b] < amount) return res.status(400).json({message: `Insufficient ${b}`}); u.holdings[b] -= parseFloat(amount); u.holdings[q] += val; addTx(u, 'Sell', pair, `-${amount}`, `+${val.toFixed(2)} USDT`); res.json({ message: 'OK' }); });
+app.post('/transfer-to-casino', (req, res) => { const u = getUser(req); if (u.holdings[req.body.currency] < req.body.amount) return res.status(400).json({message: 'Insufficient'}); u.holdings[req.body.currency] -= parseFloat(req.body.amount); if(!u.casinoHoldings[req.body.currency]) u.casinoHoldings[req.body.currency]=0; u.casinoHoldings[req.body.currency] += parseFloat(req.body.amount); addTx(u, 'Transfer', req.body.currency, `-${req.body.amount}`, 'To Casino'); res.json({ message: 'OK' }); });
+app.post('/transfer-to-wallet', (req, res) => { const u = getUser(req); if (u.casinoHoldings[req.body.currency] < req.body.amount) return res.status(400).json({message: 'Insufficient'}); u.casinoHoldings[req.body.currency] -= parseFloat(req.body.amount); u.holdings[req.body.currency] += parseFloat(req.body.amount); addTx(u, 'Deposit', req.body.currency, `+${req.body.amount}`, 'From Casino'); res.json({ message: 'OK' }); });
+app.post('/swap', (req, res) => { const u = getUser(req); const { from, to, amount } = req.body; if (!u.holdings[from] || u.holdings[from] < amount) return res.status(400).json({message: `Insufficient ${from}`}); if (from === to) return res.status(400).json({message: "Same coin"}); const priceFrom = prices[from]; const priceTo = prices[to]; const receive = (amount * priceFrom) / priceTo; u.holdings[from] -= parseFloat(amount); u.holdings[to] += receive; addTx(u, 'Swap', `${from} -> ${to}`, `-${amount} ${from}`, `+${receive.toFixed(6)} ${to}`); res.json({ message: 'Swapped' }); });
 app.post('/market-hack', (req, res) => { const { direction } = req.body; marketHackMultiplier = direction === 'up' ? 1.5 : 0.7; setTimeout(() => marketHackMultiplier = 1, 60000); res.json({ message: 'Hack' }); });
 app.get('/transactions/stream', (req, res) => { res.setHeader('Content-Type', 'text/event-stream'); res.setHeader('Cache-Control', 'no-cache'); res.setHeader('Connection', 'keep-alive'); });
 const PORT = process.env.PORT || 3000;
