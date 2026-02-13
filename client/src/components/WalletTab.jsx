@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
 import { 
-  ArrowDownToLine, ArrowUpFromLine, X, TrendingUp, ArrowUpRight, ArrowDownRight, Wallet, ArrowRightLeft
+  ArrowDownToLine, ArrowUpFromLine, X, TrendingUp, ArrowUpRight, ArrowDownRight, Wallet, ArrowRightLeft, RefreshCw, ChevronDown, Check
 } from 'lucide-react'
 import { AreaChart, Area, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import toast from 'react-hot-toast'
@@ -50,8 +50,24 @@ export default function WalletTab() {
   const [loading, setLoading] = useState(false)
   const [portfolioChartRange, setPortfolioChartRange] = useState('1H')
   
-  // Unified Form State (added toCurrency for swap)
+  // Form State
   const [form, setForm] = useState({ amount: '', currency: 'USDT', toCurrency: 'BTC', address: '' })
+
+  // Dropdown States for Swap
+  const [swapFromOpen, setSwapFromOpen] = useState(false)
+  const [swapToOpen, setSwapToOpen] = useState(false)
+  const swapFromRef = useRef(null)
+  const swapToRef = useRef(null)
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (swapFromRef.current && !swapFromRef.current.contains(event.target)) setSwapFromOpen(false)
+      if (swapToRef.current && !swapToRef.current.contains(event.target)) setSwapToOpen(false)
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   const refresh = async () => {
     try {
@@ -59,9 +75,8 @@ export default function WalletTab() {
       setHoldings(h)
       setPrices(p)
       setBalanceHistory(Array.isArray(b) ? b : [])
-    } catch (e) {
-      // Silent catch
-    }
+      setError(null)
+    } catch (e) {}
   }
 
   useEffect(() => {
@@ -119,29 +134,43 @@ export default function WalletTab() {
 
   const isPositive = stats.diff >= 0
   
-  // Calculate estimated receive amount for Swap UI
   const swapEstimate = form.amount && prices[form.currency] && prices[form.toCurrency] 
     ? (parseFloat(form.amount) * prices[form.currency] / prices[form.toCurrency]) 
     : 0;
 
+  // Get balance for Swap UI
+  const swapBalance = holdings.wallet?.[form.currency] || 0;
+
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-20 px-4">
+      {/* CSS to hide arrows */}
+      <style>{`
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+      `}</style>
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#eaecef] flex items-center gap-2">
           <Wallet className="text-[#f3ba2f]" /> Wallet
         </h1>
         <div className="flex bg-[#1e2329] rounded-lg p-1 border border-[#2b3139]">
           {['1H', '1D', '1M', 'All'].map((r) => (
-            <button key={r} onClick={() => setPortfolioChartRange(r)} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${portfolioChartRange === r ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>
+            <button
+              key={r}
+              onClick={() => setPortfolioChartRange(r)}
+              className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${
+                portfolioChartRange === r ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'
+              }`}
+            >
               {r}
             </button>
           ))}
         </div>
       </div>
 
-      {/* --- HERO CARD --- */}
+      {/* HERO CARD */}
       <div className="relative overflow-hidden rounded-3xl border border-[#2b3139] bg-[#161a1e] group h-[400px]">
-        {/* Layer 1: Content - Z-20 ensures clickable */}
         <div className="relative z-20 p-8 h-full flex flex-col justify-between pointer-events-none">
           <div className="flex flex-col md:flex-row justify-between items-start gap-6">
             <div className="space-y-1 pointer-events-auto">
@@ -150,19 +179,16 @@ export default function WalletTab() {
               <div className={`flex items-center mt-3 text-sm font-bold px-3 py-1 rounded-full w-fit ${isPositive ? 'bg-[#0ecb81]/10 text-[#0ecb81]' : 'bg-[#f6465d]/10 text-[#f6465d]'}`}>{isPositive ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}{isPositive ? '+' : ''}{formatNumber(stats.diff)} ({formatNumber(stats.percent)}%)<span className="ml-2 text-[#848e9c] font-normal opacity-70">past {portfolioChartRange}</span></div>
             </div>
             
-            {/* BUTTONS CONTAINER */}
             <div className="flex gap-3 w-full md:w-auto pointer-events-auto">
               <button onClick={() => setModal('deposit')} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#0ecb81] text-[#0b0e11] hover:bg-[#0ecb81]/90 font-bold transition-transform active:scale-95 shadow-lg shadow-[#0ecb81]/10"><ArrowDownToLine size={20} /> Deposit</button>
               <button onClick={() => setModal('withdraw')} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#2b3139] text-[#eaecef] hover:bg-[#323942] font-bold border border-[#474d57] transition-transform active:scale-95"><ArrowUpFromLine size={20} /> Withdraw</button>
-              {/* SWAP BUTTON IS HERE */}
-              <button onClick={() => setModal('swap')} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#f3ba2f] text-[#0b0e11] hover:bg-[#e0aa25] font-bold transition-transform active:scale-95 shadow-lg shadow-[#f3ba2f]/10"><ArrowRightLeft size={20} /> Swap</button>
+              <button onClick={() => setModal('swap')} className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#f3ba2f] text-[#0b0e11] hover:bg-[#e0aa25] font-bold transition-transform active:scale-95 shadow-lg shadow-[#f3ba2f]/10"><RefreshCw size={20} /> Swap</button>
             </div>
           </div>
         </div>
 
-        {/* Layer 2: Chart - Z-10 ensures it's behind text but above bg */}
         <div className="absolute inset-0 z-10">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <AreaChart data={stats.data} margin={{ top: 120, right: 0, left: 0, bottom: 0 }}>
               <defs><linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={isPositive ? "#0ecb81" : "#f6465d"} stopOpacity={0.4}/><stop offset="95%" stopColor={isPositive ? "#0ecb81" : "#f6465d"} stopOpacity={0}/></linearGradient></defs>
               <YAxis domain={stats.domain} hide={true} />
@@ -173,7 +199,7 @@ export default function WalletTab() {
         </div>
       </div>
 
-      {/* --- ASSETS TABLE --- */}
+      {/* ASSETS TABLE */}
       <div className="bg-[#161a1e] rounded-2xl border border-[#2b3139] overflow-hidden">
         <div className="px-6 py-5 border-b border-[#2b3139] flex justify-between items-center bg-[#1e2329]/50"><h2 className="text-lg font-bold text-[#eaecef]">My Assets</h2><div className="text-xs text-[#848e9c] uppercase font-bold tracking-widest">Simulation Account</div></div>
         <div className="overflow-x-auto">
@@ -213,22 +239,69 @@ export default function WalletTab() {
           </form>
       </Modal>)}
 
-      {/* SWAP MODAL */}
+      {/* --- SWAP MODAL (IMPROVED) --- */}
       {modal === 'swap' && ( <Modal title="Swap Coins" onClose={() => setModal(null)}>
-          <form onSubmit={handleSwap} className="space-y-5">
+          <form onSubmit={handleSwap} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-xs font-black text-[#848e9c] uppercase mb-2">From</label><select value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} className="w-full rounded-xl bg-[#0b0e11] border border-[#2b3139] p-3 text-[#eaecef] focus:border-[#f3ba2f] outline-none">{COINS.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
-                <div><label className="block text-xs font-black text-[#848e9c] uppercase mb-2">To</label><select value={form.toCurrency} onChange={(e) => setForm({ ...form, toCurrency: e.target.value })} className="w-full rounded-xl bg-[#0b0e11] border border-[#2b3139] p-3 text-[#eaecef] focus:border-[#f3ba2f] outline-none">{COINS.filter(c => c !== form.currency).map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                {/* FROM DROPDOWN */}
+                <div className="relative" ref={swapFromRef}>
+                    <label className="block text-xs font-black text-[#848e9c] uppercase mb-2">From</label>
+                    <button type="button" onClick={() => setSwapFromOpen(!swapFromOpen)} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-[#eaecef] flex justify-between items-center text-sm font-bold hover:border-[#f3ba2f] transition-colors">
+                        {form.currency} <ChevronDown size={14} />
+                    </button>
+                    {swapFromOpen && (
+                        <div className="absolute top-full left-0 w-full mt-2 bg-[#1e2329] border border-[#2b3139] rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
+                            {COINS.map(c => (
+                                <div key={c} onClick={() => { setForm({...form, currency: c}); setSwapFromOpen(false)}} className={`px-4 py-2 text-sm font-bold cursor-pointer flex justify-between hover:bg-[#2b3139] ${form.currency === c ? 'text-[#f3ba2f]' : 'text-[#848e9c]'}`}>
+                                    {c} {form.currency === c && <Check size={14}/>}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* TO DROPDOWN */}
+                <div className="relative" ref={swapToRef}>
+                    <label className="block text-xs font-black text-[#848e9c] uppercase mb-2">To</label>
+                    <button type="button" onClick={() => setSwapToOpen(!swapToOpen)} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-[#eaecef] flex justify-between items-center text-sm font-bold hover:border-[#f3ba2f] transition-colors">
+                        {form.toCurrency} <ChevronDown size={14} />
+                    </button>
+                    {swapToOpen && (
+                        <div className="absolute top-full left-0 w-full mt-2 bg-[#1e2329] border border-[#2b3139] rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
+                            {COINS.filter(c => c !== form.currency).map(c => (
+                                <div key={c} onClick={() => { setForm({...form, toCurrency: c}); setSwapToOpen(false)}} className={`px-4 py-2 text-sm font-bold cursor-pointer flex justify-between hover:bg-[#2b3139] ${form.toCurrency === c ? 'text-[#f3ba2f]' : 'text-[#848e9c]'}`}>
+                                    {c} {form.toCurrency === c && <Check size={14}/>}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
+
             <div className="relative">
-                <label className="block text-xs font-black text-[#848e9c] uppercase mb-2">Amount to Swap</label>
-                <input type="number" step="any" required value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="w-full rounded-xl bg-[#0b0e11] border border-[#2b3139] p-3 text-[#eaecef] focus:border-[#f3ba2f] outline-none" placeholder="0.00" />
-                <button type="button" onClick={() => setForm({...form, amount: holdings.wallet[form.currency]})} className="absolute right-3 top-9 text-[10px] bg-[#2b3139] px-2 py-1 rounded text-[#f3ba2f] hover:bg-[#363c45]">MAX</button>
+                <div className="flex justify-between mb-2">
+                    <label className="block text-xs font-black text-[#848e9c] uppercase">Amount to Swap</label>
+                    <span className="text-[10px] font-bold text-[#848e9c] cursor-pointer hover:text-[#eaecef]" onClick={() => setForm({...form, amount: swapBalance})}>
+                        Avail: {formatNumber(swapBalance, 6)}
+                    </span>
+                </div>
+                <input 
+                    type="number" 
+                    step="any" 
+                    required 
+                    value={form.amount} 
+                    onChange={(e) => setForm({ ...form, amount: e.target.value })} 
+                    className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none" 
+                    placeholder="0.00" 
+                />
+                <button type="button" onClick={() => setForm({...form, amount: swapBalance})} className="absolute right-3 top-9 text-[10px] bg-[#2b3139] px-2 py-1 rounded text-[#f3ba2f] hover:bg-[#363c45] font-bold">MAX</button>
             </div>
+            
             <div className="bg-[#2b3139]/30 p-3 rounded-xl border border-[#2b3139] flex justify-between items-center">
                 <span className="text-xs font-bold text-[#848e9c]">You Receive:</span>
                 <span className="text-sm font-mono font-bold text-[#0ecb81]">≈ {formatNumber(swapEstimate, 6)} {form.toCurrency}</span>
             </div>
+
             <button type="submit" disabled={loading || !form.amount} className="w-full py-4 rounded-xl bg-[#f3ba2f] text-[#0b0e11] font-black uppercase tracking-widest hover:bg-[#e0aa25] disabled:opacity-50 transition-all">{loading ? 'Swapping...' : 'Confirm Swap'}</button>
           </form>
       </Modal>)}
