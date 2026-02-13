@@ -28,8 +28,7 @@ export default function CasinoTab() {
   const [holdings, setHoldings] = useState({ wallet: {}, casino: {} })
   const [prices, setPrices] = useState({})
   const [history, setHistory] = useState([]) 
-  // FIX: Added missing loading state
-  const [loading, setLoading] = useState(false) 
+  const [loading, setLoading] = useState(false)
   
   // NAV
   const [activeView, setActiveView] = useState('lobby')
@@ -115,14 +114,14 @@ export default function CasinoTab() {
 
   const handleTransfer = async (e) => {
     e.preventDefault(); 
-    setLoading(true); // Now this works
+    setLoading(true);
     const tid = toast.loading("Processing...");
     try {
       if (transferForm.direction === 'toCasino') await transferToCasino(transferForm.amount, activeCoin);
       else await transferToWallet(transferForm.amount, activeCoin);
       toast.success("Success", { id: tid }); await refreshData(); setTransferModal(null);
     } catch (err) { toast.error(err.message, { id: tid }) }
-    finally { setLoading(false) }
+    finally { setLoading(false); }
   }
 
   const handlePlay = async () => {
@@ -201,7 +200,27 @@ export default function CasinoTab() {
   // --- GAME VIEW ---
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-20 px-4">
-      {/* HEADER WITH BACK BUTTON */}
+      {/* 
+         CRITICAL FIX: 
+         - Set 'range-slider-input' class to prevent pointer events on the track/input itself.
+         - Use CSS to re-enable pointer events ONLY on the thumb.
+      */}
+      <style>{`
+        .range-slider-input {
+          pointer-events: none; /* Disable clicking on track/empty space */
+        }
+        .range-slider-input::-webkit-slider-thumb {
+          pointer-events: auto; /* Re-enable clicking on the box/thumb */
+          z-index: 50;
+          position: relative;
+        }
+        .range-slider-input::-moz-range-thumb {
+          pointer-events: auto;
+          z-index: 50;
+          position: relative;
+        }
+      `}</style>
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
             <button onClick={() => setActiveView('lobby')} className="p-2 bg-[#2b3139] rounded-lg text-[#848e9c] hover:text-white transition-colors"><ArrowLeft size={20} /></button>
@@ -261,20 +280,20 @@ export default function CasinoTab() {
         </div>
       </div>
 
-      {/* GAME BOARD */}
+      {/* GAME CONTROLS & VISUALIZER */}
       <div className="rounded-3xl border border-[#2b3139] bg-[#161a1e] overflow-hidden shadow-2xl relative">
         <div className="grid grid-cols-1 lg:grid-cols-4">
           <div className="lg:col-span-1 bg-[#1e2329] border-r border-[#2b3139] p-6 flex flex-col gap-6">
             <div>
               <div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-[#848e9c] uppercase">Bet Amount</label><span className="text-[10px] font-bold text-[#848e9c]">Max: {formatNumber(casinoBalance, 6)}</span></div>
-              <div className="relative group"><input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl py-3 pl-3 pr-10 text-white font-mono font-bold focus:border-[#f3ba2f] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none" /><div className="absolute right-3 top-3.5 pointer-events-none text-xs font-bold text-[#f3ba2f]">{activeCoin}</div></div>
+              <div className="relative group"><input type="number" value={betAmount} onChange={(e) => setBetAmount(e.target.value)} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl py-3 pl-3 pr-10 text-white font-mono font-bold focus:border-[#f3ba2f] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none" /><div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-xs font-bold text-[#f3ba2f]">{activeCoin}</div></div>
               <div className="grid grid-cols-4 gap-2 mt-2">{['Min', '1/2', '2x', 'Max'].map(label => (<button key={label} onClick={() => { if(label === 'Min') adjustBet('min'); if(label === '1/2') adjustBet('half'); if(label === '2x') adjustBet('double'); if(label === 'Max') adjustBet('max'); }} className="bg-[#2b3139] hover:bg-[#363c45] text-[#848e9c] hover:text-[#eaecef] py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors">{label}</button>))}</div>
             </div>
 
             {activeGame === 'ultimate' && (
                 <div className="grid grid-cols-2 gap-4">
-                    <div><label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Min Range</label><input type="number" min="0" max="9999" value={rangeMin} onChange={(e) => setRangeMin(Math.min(Number(e.target.value), rangeMax - 1))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></div>
-                    <div><label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Max Range</label><input type="number" min="1" max="10000" value={rangeMax} onChange={(e) => setRangeMax(Math.max(Number(e.target.value), rangeMin + 1))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /></div>
+                    <div><label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Min Range</label><input type="number" min="0" max="9999" value={rangeMin} onChange={(e) => setRangeMin(Math.min(Number(e.target.value), rangeMax - 1))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none" /></div>
+                    <div><label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Max Range</label><input type="number" min="1" max="10000" value={rangeMax} onChange={(e) => setRangeMax(Math.max(Number(e.target.value), rangeMin + 1))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none" /></div>
                 </div>
             )}
 
@@ -311,16 +330,16 @@ export default function CasinoTab() {
 
                 {activeGame === 'classic' && (
                     <>
-                        <input type="range" min="2" max="97" step="1" value={rollOverTarget} onChange={(e) => setWinChance(100 - Number(e.target.value))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20 pointer-events-auto" />
+                        <input type="range" min="2" max="97" step="1" value={rollOverTarget} onChange={(e) => setWinChance(100 - Number(e.target.value))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20 range-slider-input" />
                         <div className="absolute w-10 h-10 bg-[#eaecef] rounded-xl shadow-2xl border-4 border-[#161a1e] flex items-center justify-center pointer-events-none transition-all duration-75 z-10" style={{ left: `calc(${rollOverTarget}% - 20px)` }}><ArrowRightLeft size={16} className="text-[#161a1e]" /></div>
                     </>
                 )}
 
                 {activeGame === 'ultimate' && (
                     <>
-                        <input type="range" min="0" max="9999" step="1" value={rangeMin} onChange={(e) => setRangeMin(Math.min(Number(e.target.value), rangeMax - 1))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20 pointer-events-auto" style={{ zIndex: rangeMin > 9000 ? 30 : 20 }} />
+                        <input type="range" min="0" max="9999" step="1" value={rangeMin} onChange={(e) => setRangeMin(Math.min(Number(e.target.value), rangeMax - 1))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20 range-slider-input" style={{ zIndex: rangeMin > 9000 ? 30 : 20 }} />
                         <div className="absolute w-6 h-10 bg-[#eaecef] rounded-md shadow-2xl border-4 border-[#161a1e] flex items-center justify-center pointer-events-none transition-all duration-75 z-10" style={{ left: `calc(${rangeMin / 100}% - 12px)` }}></div>
-                        <input type="range" min="1" max="10000" step="1" value={rangeMax} onChange={(e) => setRangeMax(Math.max(Number(e.target.value), rangeMin + 1))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20 pointer-events-auto" />
+                        <input type="range" min="1" max="10000" step="1" value={rangeMax} onChange={(e) => setRangeMax(Math.max(Number(e.target.value), rangeMin + 1))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20 range-slider-input" />
                         <div className="absolute w-6 h-10 bg-[#eaecef] rounded-md shadow-2xl border-4 border-[#161a1e] flex items-center justify-center pointer-events-none transition-all duration-75 z-10" style={{ left: `calc(${rangeMax / 100}% - 12px)` }}></div>
                     </>
                 )}
@@ -357,7 +376,7 @@ export default function CasinoTab() {
                     <td className="py-4 px-6 text-[#848e9c] font-mono tabular-nums text-xs font-medium">{formatTime(row.time)}</td>
                     <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{formatNumber(row.bet, 4)} <span className="text-[10px] text-[#848e9c] font-sans">{row.currency}</span></td>
                     <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{row.multiplier}x</td>
-                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#848e9c]">{row.target}</td>
+                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#848e9c]">{gameMode === 'ultimate' && row.target.includes('-') ? row.target : (parseFloat(row.target) ? `> ${parseFloat(row.target).toFixed(2)}` : row.target)}</td>
                     <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.roll}</td>
                     <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.win ? '+' : ''}{formatNumber(row.profit, 4)}</td>
                   </tr>
