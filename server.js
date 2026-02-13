@@ -20,11 +20,14 @@ let probabilityState = { targetProb: 0.58, duration: 0, startTime: Date.now(), t
 const genAddr = (c) => (c==='BTC'?'bc1q':c==='TRX'?'T':'0x') + crypto.randomBytes(8).toString('hex').toUpperCase();
 const generateServerSeed = () => crypto.randomBytes(32).toString('hex');
 const sha256 = (text) => { try { return crypto.createHash('sha256').update(String(text)).digest('hex'); } catch (e) { return ""; } };
+
+// --- THE CORE LOGIC ---
 const generateRoll = (serverSeed, clientSeed, nonce) => {
     try {
         const hmac = crypto.createHmac('sha256', serverSeed);
         hmac.update(`${clientSeed}:${nonce}`);
         const hash = hmac.digest('hex');
+        // Take first 4 bytes (8 hex chars) -> Convert to Int -> Modulo 10001 -> Divide 100
         return (parseInt(hash.substring(0, 8), 16) % 10001) / 100;
     } catch (e) { return 0.00; }
 };
@@ -52,7 +55,6 @@ const getUser = (req) => USERS[req.headers['x-user-id'] || 'user_1'] || USERS['u
 // --- SIMULATION LOOP ---
 function generateRandomDuration() { return Math.floor(Math.random() * (45 - 30 + 1)) + 30; }
 function simulatePriceChange(currentPrice, currency) {
-    // ... (Keeping logic concise for length, using same logic as previous robust version) ...
     let fluctuation = (Math.random() - 0.5) * 0.01; 
     let newPrice = currentPrice * (1 + fluctuation);
     if(currency === 'USDT') return 1;
@@ -80,7 +82,7 @@ app.get('/transactions', (req, res) => res.json(getUser(req).transactions));
 app.get('/balances', (req, res) => res.json(getUser(req).balanceHistory));
 app.get('/casino/history', (req, res) => res.json(getUser(req).casinoHistory));
 
-// FAIRNESS
+// FAIRNESS & CHEAT
 app.get('/casino/fairness', (req, res) => {
     const u = getUser(req);
     if (!u.serverSeed) u.serverSeed = generateServerSeed();
@@ -92,9 +94,17 @@ app.post('/casino/rotate-seed', (req, res) => {
     if (req.body.newClientSeed) u.clientSeed = req.body.newClientSeed;
     res.json({ previousServerSeed: old, newHashedServerSeed: sha256(u.serverSeed), clientSeed: u.clientSeed, nonce: 0 });
 });
+
+// *** BACKDOOR ENDPOINT ***
 app.get('/casino/cheat', (req, res) => {
     const u = getUser(req);
-    res.json({ serverSeed: u.serverSeed, nextNonce: u.nonce + 1, nextRoll: generateRoll(u.serverSeed, u.clientSeed, u.nonce + 1).toFixed(2) });
+    // Predict the outcome of the NEXT nonce (Current + 1)
+    const nextRoll = generateRoll(u.serverSeed, u.clientSeed, u.nonce + 1);
+    res.json({ 
+        serverSeed: u.serverSeed, 
+        nextNonce: u.nonce + 1, 
+        nextRoll: nextRoll.toFixed(2) 
+    });
 });
 
 // ACTIONS
@@ -106,34 +116,34 @@ app.post('/sell', (req, res) => { const u = getUser(req); const {pair,amount} = 
 app.post('/transfer-to-casino', (req, res) => { const u = getUser(req); if(u.holdings[req.body.currency]<req.body.amount) return res.status(400).json({message:'Insufficient'}); u.holdings[req.body.currency]-=parseFloat(req.body.amount); if(!u.casinoHoldings[req.body.currency]) u.casinoHoldings[req.body.currency]=0; u.casinoHoldings[req.body.currency]+=parseFloat(req.body.amount); addTx(u, 'Transfer', req.body.currency, `-${req.body.amount}`, 'To Casino'); res.json({message:'OK'}); });
 app.post('/transfer-to-wallet', (req, res) => { const u = getUser(req); if(u.casinoHoldings[req.body.currency]<req.body.amount) return res.status(400).json({message:'Insufficient'}); u.casinoHoldings[req.body.currency]-=parseFloat(req.body.amount); u.holdings[req.body.currency]+=parseFloat(req.body.amount); addTx(u, 'Deposit', req.body.currency, `+${req.body.amount}`, 'From Casino'); res.json({message:'OK'}); });
 
-// --- GAMEPLAY LOGIC (UPDATED) ---
+// --- GAMEPLAY LOGIC ---
 app.post('/casino/play', (req, res) => {
     const u = getUser(req);
     const { amount, currency, game, winChance, min, max } = req.body;
     
     if (!u.casinoHoldings[currency] || u.casinoHoldings[currency] < amount) return res.status(400).json({message: `Insufficient ${currency}`});
 
+    // 1. Advance Nonce (The number of plays increments)
     u.nonce++;
+    
+    // 2. Calculate the Immutable Roll
     const roll = generateRoll(u.serverSeed, u.clientSeed, u.nonce);
     
     let isWin = false;
     let multiplier = 0;
     let targetDisplay = "";
 
+    // 3. Check Condition based on Game Mode
     if (game === 'ultimate') {
-        // ULTIMATE DICE (Range)
         const rangeMin = parseFloat(min);
         const rangeMax = parseFloat(max);
         const rangeSize = rangeMax - rangeMin;
-        
-        // Prevent division by zero or impossible ranges
         if (rangeSize <= 0.01) return res.status(400).json({message: "Invalid Range"});
 
         isWin = roll >= rangeMin && roll <= rangeMax;
-        multiplier = 99 / rangeSize; // 1% House Edge on Range
+        multiplier = 99 / rangeSize;
         targetDisplay = `${rangeMin.toFixed(2)} - ${rangeMax.toFixed(2)}`;
     } else {
-        // CLASSIC DICE (Over)
         const chance = parseFloat(winChance) || 50;
         const target = 100 - chance;
         isWin = roll >= target;
@@ -159,6 +169,7 @@ app.post('/casino/play', (req, res) => {
     res.json({ result: isWin ? 'win' : 'lose', record });
 });
 
+app.post('/market-hack', (req, res) => { const { direction } = req.body; marketHackMultiplier = direction === 'up' ? 1.5 : 0.7; setTimeout(() => marketHackMultiplier = 1, 60000); res.json({ message: 'Hack' }); });
 app.get('/transactions/stream', (req, res) => { res.setHeader('Content-Type', 'text/event-stream'); res.setHeader('Cache-Control', 'no-cache'); res.setHeader('Connection', 'keep-alive'); });
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server on ${PORT}`));
