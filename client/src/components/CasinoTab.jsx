@@ -365,4 +365,16 @@ export default function CasinoTab() {
                   <tr key={row.id} className="hover:bg-[#1e2329] transition-colors">
                     <td className="py-4 px-6 text-[#848e9c] font-mono tabular-nums text-xs font-medium">{formatTime(row.time)}</td>
                     <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{formatNumber(row.bet, 4)} <span className="text-[10px] text-[#848e9c] font-sans">{row.currency}</span></td>
-                    <td className="py-4 px-6 text-right font-mono tabular-nums tex
+                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{row.multiplier}x</td>
+                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#848e9c]">{gameMode === 'ultimate' && row.target.includes('-') ? row.target : `> ${parseFloat(row.target).toFixed(0)}`}</td>
+                    <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.roll}</td>
+                    <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.win ? '+' : ''}{formatNumber(row.profit, 4)}</td>
+                  </tr>
+              )))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
