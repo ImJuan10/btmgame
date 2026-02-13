@@ -94,7 +94,7 @@ function ExpandedChart({ symbol, data, onClose, prices, holdings, refresh }) {
 
   // Helper for MAX logic
   const setMaxBuy = () => { if (price > 0) setBuyAmount((usdtBalance / price).toFixed(6)); }
-  const setMaxSell = () => setBuyAmount(''); // Clear buy
+  const setMaxSell = () => setSellAmount(balance.toFixed(6)); 
   
   return (
     <tr className="bg-[#1e2329]">
@@ -136,8 +136,8 @@ function ExpandedChart({ symbol, data, onClose, prices, holdings, refresh }) {
                   <div className="flex justify-between text-[10px] font-bold uppercase text-[#848e9c]"><span>Buy {symbol}</span><span>Avail: {formatNumber(usdtBalance)} USDT</span></div>
                   <div className="relative">
                     <input type="number" step="any" value={buyAmount} onChange={(e) => setBuyAmount(e.target.value)} placeholder="Amount" className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-sm text-white focus:border-[#0ecb81] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
-                    <button type="button" onClick={setMaxBuy} className="absolute right-12 top-2.5 text-[10px] bg-[#2b3139] px-2 py-1 rounded text-[#0ecb81] hover:bg-[#363c45] font-bold transition-colors">MAX</button>
-                    {/* FIXED ALIGNMENT */}
+                    {/* FIXED: ALIGNED TO VERTICAL CENTER */}
+                    <button type="button" onClick={setMaxBuy} className="absolute right-12 top-1/2 -translate-y-1/2 text-[10px] bg-[#2b3139] px-2 py-1 rounded text-[#0ecb81] hover:bg-[#363c45] font-bold transition-colors">MAX</button>
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#848e9c] text-xs font-bold uppercase pointer-events-none">{symbol}</span>
                   </div>
                   <div className="text-[10px] text-[#848e9c] flex justify-between px-1"><span>Est. Cost:</span><span className="text-[#eaecef] font-mono">≈ ${buyAmount ? formatNumber(parseFloat(buyAmount) * price) : '0.00'} USDT</span></div>
@@ -150,8 +150,8 @@ function ExpandedChart({ symbol, data, onClose, prices, holdings, refresh }) {
                   <div className="flex justify-between text-[10px] font-bold uppercase text-[#848e9c]"><span>Sell {symbol}</span><span>Avail: {formatNumber(balance, 4)} {symbol}</span></div>
                   <div className="relative">
                     <input type="number" step="any" value={sellAmount} onChange={(e) => setSellAmount(e.target.value)} placeholder="Amount" className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-sm text-white focus:border-[#f6465d] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
-                    <button type="button" onClick={() => setSellAmount(balance.toFixed(6))} className="absolute right-12 top-2.5 text-[10px] bg-[#2b3139] px-2 py-1 rounded text-[#f6465d] hover:bg-[#363c45] font-bold transition-colors">MAX</button>
-                    {/* FIXED ALIGNMENT */}
+                    {/* FIXED: ALIGNED TO VERTICAL CENTER */}
+                    <button type="button" onClick={setMaxSell} className="absolute right-12 top-1/2 -translate-y-1/2 text-[10px] bg-[#2b3139] px-2 py-1 rounded text-[#f6465d] hover:bg-[#363c45] font-bold transition-colors">MAX</button>
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#848e9c] text-xs font-bold uppercase pointer-events-none">{symbol}</span>
                   </div>
                   <div className="text-[10px] text-[#848e9c] flex justify-between px-1"><span>Est. Value:</span><span className="text-[#eaecef] font-mono">≈ ${sellAmount ? formatNumber(parseFloat(sellAmount) * price) : '0.00'} USDT</span></div>
