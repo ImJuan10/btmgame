@@ -45,7 +45,7 @@ export default function CasinoTab() {
   
   // Game State
   const [activeCoin, setActiveCoin] = useState('BC') 
-  const [isCoinListOpen, setIsCoinListOpen] = useState(false) // For custom dropdown
+  const [isCoinListOpen, setIsCoinListOpen] = useState(false)
   const [betAmount, setBetAmount] = useState('10')
   const [winChance, setWinChance] = useState(50) 
   const [isRolling, setIsRolling] = useState(false)
@@ -193,54 +193,48 @@ export default function CasinoTab() {
 
       {/* BANKROLL CARD - REDESIGNED */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 rounded-2xl border border-[#2b3139] bg-[#161a1e] p-6 relative overflow-hidden group">
+        {/* ADDED z-30 AND overflow-visible TO FIX DROPDOWN CLIPPING */}
+        <div className="md:col-span-2 rounded-2xl border border-[#2b3139] bg-[#161a1e] p-6 relative overflow-visible group z-30">
           <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Trophy size={100} className="text-[#f3ba2f]" /></div>
           
           <div className="relative z-10 flex flex-col h-full justify-between">
-            {/* Top Row: Label and Custom Coin Picker */}
-            <div className="flex items-start justify-between">
-                <p className="text-[#848e9c] text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                    <Wallet size={14} /> Casino Balance
-                </p>
+            {/* Top Row: Label */}
+            <p className="text-[#848e9c] text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                <Wallet size={14} /> Casino Balance
+            </p>
 
-                {/* CUSTOM NON-INVASIVE COIN PICKER */}
-                <div className="relative" ref={dropdownRef}>
-                    <button 
-                        onClick={() => setIsCoinListOpen(!isCoinListOpen)}
-                        className="flex items-center gap-2 bg-[#0b0e11] border border-[#2b3139] hover:border-[#474d57] text-[#eaecef] px-3 py-1.5 rounded-lg text-sm font-bold transition-all"
-                    >
-                        <Coins size={14} className="text-[#f3ba2f]" />
-                        {activeCoin}
-                        <ChevronDown size={14} className={`text-[#848e9c] transition-transform ${isCoinListOpen ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {/* Dropdown Menu */}
-                    {isCoinListOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-40 bg-[#1e2329] border border-[#2b3139] rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto">
-                            <div className="p-1">
-                                {COINS.map(c => (
-                                    <button
-                                        key={c}
-                                        onClick={() => { setActiveCoin(c); setIsCoinListOpen(false); setBetAmount('0'); }}
-                                        className={`w-full text-left px-3 py-2 rounded-lg text-sm font-bold flex items-center justify-between transition-colors ${activeCoin === c ? 'bg-[#2b3139] text-[#f3ba2f]' : 'text-[#848e9c] hover:bg-[#2b3139] hover:text-[#eaecef]'}`}
-                                    >
-                                        {c}
-                                        {activeCoin === c && <Check size={14} />}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Middle Row: Big Balance Display */}
+            {/* Middle Row: Big Balance Display WITH NON-INVASIVE PICKER */}
             <div className="mt-4 mb-4">
-              <div className="flex items-baseline gap-2">
+              <div className="flex items-baseline gap-2 relative" ref={dropdownRef}>
                 <span className="text-5xl font-black text-[#f3ba2f] font-mono tracking-tight tabular-nums">
                   {formatNumber(casinoBalance, 6)}
                 </span>
-                <span className="text-xl text-[#eaecef] font-bold">{activeCoin}</span>
+                
+                {/* INTERACTIVE COIN SYMBOL */}
+                <button 
+                    onClick={() => setIsCoinListOpen(!isCoinListOpen)}
+                    className="text-xl text-[#eaecef] font-bold flex items-center gap-1 hover:text-white transition-colors outline-none"
+                >
+                    {activeCoin} <ChevronDown size={16} className={`transition-transform duration-200 ${isCoinListOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* THE DROPDOWN */}
+                {isCoinListOpen && (
+                    <div className="absolute top-full left-0 mt-2 w-48 bg-[#1e2329] border border-[#2b3139] rounded-xl shadow-2xl z-50 overflow-hidden max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-150">
+                        <div className="p-1.5 grid gap-0.5">
+                            {COINS.map(c => (
+                                <button
+                                    key={c}
+                                    onClick={() => { setActiveCoin(c); setIsCoinListOpen(false); setBetAmount('0'); }}
+                                    className={`w-full text-left px-3 py-2.5 rounded-lg text-xs font-bold flex items-center justify-between transition-colors ${activeCoin === c ? 'bg-[#2b3139] text-[#f3ba2f]' : 'text-[#848e9c] hover:bg-[#2b3139] hover:text-[#eaecef]'}`}
+                                >
+                                    {c}
+                                    {activeCoin === c && <Check size={14} />}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
               </div>
               <div className="text-sm font-medium text-[#848e9c] mt-1 font-mono">≈ ${formatNumber(casinoUsdValue, 2)}</div>
             </div>
@@ -344,7 +338,6 @@ export default function CasinoTab() {
         </div>
       </div>
 
-      {/* TRANSFER MODAL */}
       {transferModal && (
         <Modal title="Wallet Transfer" onClose={() => setTransferModal(null)}>
           <form onSubmit={handleTransfer} className="space-y-6">
