@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { 
-  Dices, ArrowRightLeft, Wallet, History, Trophy, AlertCircle, Coins, ShieldCheck, RefreshCw, EyeOff, Lock, ChevronDown, Check, Target, Crosshair, ArrowLeft, Settings2, LayoutGrid
+  Dices, ArrowRightLeft, Wallet, History, Trophy, AlertCircle, Coins, ShieldCheck, RefreshCw, EyeOff, Lock, ChevronDown, Check, Target, Crosshair, ArrowLeft, LayoutGrid
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getHoldings, getPrices, transferToCasino, transferToWallet, casinoPlay, getCasinoHistory, getFairness, rotateSeed, getCheatData } from '../api'
 
 const COINS = ['BTC', 'ETH', 'DOGE', 'SHIB', 'TON', 'TRX', 'LTC', 'LUNA', 'BC', 'USDT'];
 
-// ... Utils ...
+// --- UTILS ---
 function formatNumber(num, decimals = 2) { if (num == null || Number.isNaN(num)) return '0.00'; return Number(num).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) }
 function formatTime(dateString) { try { return new Date(dateString).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) } catch (e) { return "--:--" } }
 function floorAmount(amount, decimals = 6) { if (!amount) return '0'; const factor = Math.pow(10, decimals); return (Math.floor(amount * factor) / factor).toString(); }
@@ -172,9 +172,11 @@ export default function CasinoTab() {
         <div className="max-w-6xl mx-auto space-y-8 pb-20 px-4 pt-4">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold text-[#eaecef] flex items-center gap-3"><LayoutGrid className="text-[#f3ba2f]" size={32} /> Casino Lobby</h1>
-                <button onClick={() => setFairnessModal(true)} className="bg-[#1e2329] px-4 py-2 rounded-xl border border-[#2b3139] text-sm font-bold text-[#0ecb81] flex items-center gap-2 hover:bg-[#2b3139]/80 transition-colors">
-                    <ShieldCheck size={16} /> Provably Fair
-                </button>
+                <div className="flex items-center gap-2">
+                    <button onClick={() => setFairnessModal(true)} className="bg-[#1e2329] px-4 py-2 rounded-xl border border-[#2b3139] text-sm font-bold text-[#0ecb81] flex items-center gap-2 hover:bg-[#2b3139]/80 transition-colors">
+                        <ShieldCheck size={16} /> Provably Fair
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -201,7 +203,7 @@ export default function CasinoTab() {
                 </div>
             </div>
             
-            {fairnessModal && ( <Modal title="Fairness Settings" onClose={() => { setFairnessModal(false); setHackData(null); }}>{/* Reusing Modal Content Logic Below */}</Modal> )}
+            {fairnessModal && ( <Modal title="Fairness Settings" onClose={() => { setFairnessModal(false); setHackData(null); }}>{/* ... */}</Modal> )}
         </div>
       )
   }
@@ -272,16 +274,19 @@ export default function CasinoTab() {
             <div><button onClick={() => { setTransferForm({direction: 'toCasino', amount: ''}); setTransferModal(true) }} className="px-5 py-2.5 bg-[#2b3139] hover:bg-[#363c45] text-[#eaecef] rounded-xl text-xs font-bold uppercase border border-[#474d57] transition-all active:scale-95 flex items-center gap-2"><ArrowRightLeft size={14} /> Deposit / Withdraw</button></div>
           </div>
         </div>
-        <div className="rounded-2xl border border-[#2b3139] bg-[#161a1e] p-4 flex flex-col min-h-[140px]">
+        
+        {/* MINI HISTORY (Desktop) */}
+        <div className="hidden md:flex rounded-2xl border border-[#2b3139] bg-[#161a1e] p-4 flex-col min-h-[140px]">
           <p className="text-[#848e9c] text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2"><History size={14} /> Recent Rolls</p>
-          <div className="flex-1 flex gap-2 overflow-x-auto items-center md:flex-wrap content-start scrollbar-hide">
-            {history.length === 0 && <span className="text-[#848e9c] text-xs italic">No bets placed yet.</span>}
-            {history.slice(0, 12).map((h, i) => (<div key={i} className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold font-mono text-[10px] border border-opacity-20 animate-in zoom-in duration-300 ${h.win ? 'bg-[#0ecb81]/10 border-[#0ecb81] text-[#0ecb81]' : 'bg-[#f6465d]/10 border-[#f6465d] text-[#f6465d]'}`}>{h.roll}</div>))}
+          <div className="flex-1 flex gap-2 flex-wrap content-start">
+            {history.slice(0, 10).map((h, i) => (
+              <div key={i} className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center font-bold font-mono text-[10px] border border-opacity-20 animate-in zoom-in duration-300 ${h.win ? 'bg-[#0ecb81]/10 border-[#0ecb81] text-[#0ecb81]' : 'bg-[#f6465d]/10 border-[#f6465d] text-[#f6465d]'}`}>{h.roll}</div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* GAME BOARD */}
+      {/* GAME CONTROLS & VISUALIZER */}
       <div className="rounded-3xl border border-[#2b3139] bg-[#161a1e] overflow-hidden shadow-2xl relative">
         <div className="grid grid-cols-1 lg:grid-cols-4">
           <div className="lg:col-span-1 bg-[#1e2329] border-r border-[#2b3139] p-6 flex flex-col gap-6">
@@ -296,6 +301,7 @@ export default function CasinoTab() {
               </div>
             </div>
 
+            {/* CONDITIONAL CONTROLS */}
             {activeGame === 'ultimate' && (
                 <div className="grid grid-cols-2 gap-4">
                     <div><label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Min Range</label><input type="number" min="0" max="98" value={rangeMin} onChange={(e) => setRangeMin(Math.min(Number(e.target.value), rangeMax - 1))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none" /></div>
@@ -312,12 +318,14 @@ export default function CasinoTab() {
           </div>
 
           <div className="lg:col-span-3 p-8 flex flex-col relative min-h-[400px]">
+            {/* STATS BAR */}
             <div className="flex justify-between bg-[#0b0e11] rounded-2xl p-4 border border-[#2b3139] mb-12">
                <div className="text-center w-1/3 border-r border-[#2b3139]"><div className="text-xs font-bold text-[#848e9c] uppercase mb-1">Multiplier</div><div className="text-xl font-black text-[#eaecef] font-mono">{multiplier}x</div></div>
                <div className="text-center w-1/3 border-r border-[#2b3139]"><div className="text-xs font-bold text-[#848e9c] uppercase mb-1">Target</div><div className="text-xl font-black text-[#eaecef] font-mono">{rollTargetDisplay}</div></div>
                <div className="text-center w-1/3"><div className="text-xs font-bold text-[#848e9c] uppercase mb-1">Win Chance</div><div className="text-xl font-black text-[#0ecb81] font-mono">{Number(winProbability).toFixed(2)}%</div></div>
             </div>
 
+            {/* VISUALIZER TRACK */}
             <div className="flex-1 flex flex-col justify-center select-none">
               <div className="relative h-12 w-full flex items-center">
                 <div className="absolute left-0 right-0 h-4 bg-[#2b3139] rounded-full overflow-hidden pointer-events-none">
@@ -350,22 +358,45 @@ export default function CasinoTab() {
               </div>
               <div className="flex justify-between mt-2 text-xs font-bold text-[#848e9c]"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
             </div>
-            
             <div className="mt-auto text-center pt-8"><p className="text-xs text-[#848e9c] flex items-center justify-center gap-2"><AlertCircle size={12} /> {activeGame === 'classic' ? 'Drag slider to adjust risk.' : 'Adjust Min/Max inputs.'} Rolling in the Green wins.</p></div>
           </div>
         </div>
       </div>
 
-      {transferModal && (
-        <Modal title="Wallet Transfer" onClose={() => setTransferModal(null)}>
+      {/* --- LATEST BETS TABLE --- */}
+      <div className="bg-[#161a1e] rounded-2xl border border-[#2b3139] overflow-hidden shadow-xl">
+        <div className="px-6 py-4 border-b border-[#2b3139] flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#0ecb81] animate-pulse"/><h2 className="text-sm font-bold text-[#eaecef] uppercase tracking-wider">Latest Bets</h2></div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="text-xs text-[#848e9c] uppercase font-bold border-b border-[#2b3139]">
+                <th className="py-4 px-6">Time</th><th className="py-4 px-6 text-right">Bet</th><th className="py-4 px-6 text-right">Multiplier</th><th className="py-4 px-6 text-right">Target</th><th className="py-4 px-6 text-right">Outcome</th><th className="py-4 px-6 text-right">Profit</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#2b3139]/30">
+              {history.length === 0 ? (<tr><td colSpan={6} className="py-8 text-center text-[#848e9c] text-sm italic">No bets placed yet.</td></tr>) : (history.map((row) => (
+                  <tr key={row.id} className="hover:bg-[#1e2329] transition-colors">
+                    <td className="py-4 px-6 text-[#848e9c] font-mono tabular-nums text-xs font-medium">{formatTime(row.time)}</td>
+                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{formatNumber(row.bet, 4)} <span className="text-[10px] text-[#848e9c] font-sans">{row.currency}</span></td>
+                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{row.multiplier}x</td>
+                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#848e9c]">{row.target}</td>
+                    <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.roll}</td>
+                    <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.win ? '+' : ''}{formatNumber(row.profit, 4)}</td>
+                  </tr>
+              )))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {transferModal && ( <Modal title="Wallet Transfer" onClose={() => setTransferModal(null)}>
           <form onSubmit={handleTransfer} className="space-y-6">
             <div className="bg-[#0b0e11] p-1 rounded-xl flex text-xs font-bold uppercase"><button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toCasino' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toCasino' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Deposit to Casino</button><button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toWallet' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toWallet' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Withdraw to Wallet</button></div>
             <div className="text-center py-4"><span className="text-[#848e9c] text-xs font-bold uppercase">Available Balance</span><div className="text-2xl font-black text-[#eaecef]">{transferForm.direction === 'toCasino' ? formatNumber(walletBalance, 6) : formatNumber(casinoBalance, 6)} <span className="text-sm ml-1 text-[#f3ba2f]">{activeCoin}</span></div></div>
             <div className="relative"><label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label><input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" /></div>
             <button type="submit" disabled={loading || !transferForm.amount} className="w-full py-4 bg-[#f3ba2f] text-[#0b0e11] font-black rounded-xl uppercase tracking-widest hover:bg-[#e0aa25] disabled:opacity-50">{loading ? 'Processing...' : 'Confirm Transfer'}</button>
           </form>
-        </Modal>
-      )}
+      </Modal> )}
     </div>
   )
 }
