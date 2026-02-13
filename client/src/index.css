@@ -25,6 +25,11 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* 3. Override Tailwind defaults so 'font-sans' and 'font-bold' don't break it */
+h1, h2, h3, h4, h5, h6, p, span, div, button, input, select, label, table, th, td {
+  font-family: 'JetBrains Mono', monospace !important;
+}
+
 #root {
   min-height: 100vh;
 }
