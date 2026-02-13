@@ -7,12 +7,10 @@ import { getHoldings, getPrices, transferToCasino, transferToWallet, casinoPlay,
 
 const COINS = ['BTC', 'ETH', 'DOGE', 'SHIB', 'TON', 'TRX', 'LTC', 'LUNA', 'BC', 'USDT'];
 
-// --- UTILS ---
 function formatNumber(num, decimals = 2) { if (num == null || Number.isNaN(num)) return '0.00'; return Number(num).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) }
 function formatTime(dateString) { try { return new Date(dateString).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) } catch (e) { return "--:--" } }
 function floorAmount(amount, decimals = 6) { if (!amount) return '0'; const factor = Math.pow(10, decimals); return (Math.floor(amount * factor) / factor).toString(); }
 
-// --- MODAL ---
 function Modal({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
@@ -29,24 +27,18 @@ export default function CasinoTab() {
   const [prices, setPrices] = useState({})
   const [history, setHistory] = useState([]) 
   const [loading, setLoading] = useState(false)
-  
-  // NAV
   const [activeView, setActiveView] = useState('lobby')
-  const [activeGame, setActiveGame] = useState(null) // State is 'activeGame'
-
-  // GAME STATE
+  const [activeGame, setActiveGame] = useState(null)
   const [activeCoin, setActiveCoin] = useState('BC') 
   const [isCoinListOpen, setIsCoinListOpen] = useState(false)
   const [betAmount, setBetAmount] = useState('10')
   const [isRolling, setIsRolling] = useState(false)
   const [lastResult, setLastResult] = useState(null)
   
-  // PARAMS
   const [winChance, setWinChance] = useState(50) 
   const [rangeMin, setRangeMin] = useState(2500)
   const [rangeMax, setRangeMax] = useState(7500)
 
-  // FAIRNESS & HACKING
   const [fairness, setFairness] = useState({ hashedServerSeed: 'Loading...', clientSeed: '', nonce: 0 })
   const [fairnessModal, setFairnessModal] = useState(false)
   const [newClientSeed, setNewClientSeed] = useState('')
@@ -57,7 +49,6 @@ export default function CasinoTab() {
   const [transferModal, setTransferModal] = useState(null)
   const [transferForm, setTransferForm] = useState({ amount: '', direction: 'toCasino' })
 
-  // --- DERIVED MATH ---
   const currentPrice = prices[activeCoin] || 0;
   const casinoBalance = holdings.casino?.[activeCoin] ?? 0;
   const walletBalance = holdings.wallet?.[activeCoin] ?? 0;
@@ -69,10 +60,11 @@ export default function CasinoTab() {
       multiplier = (99 / winChance).toFixed(4);
       rollTargetDisplay = `> ${(100 - winChance).toFixed(2)}`;
   } else if (activeGame === 'ultimate') {
-      const size = Math.max(1, rangeMax - rangeMin);
-      winProbability = size / 100; 
+      // FIX: Inclusive Size (Max - Min + 1)
+      const size = Math.max(1, (rangeMax - rangeMin) + 1);
+      winProbability = size / 100; // 5000 / 100 = 50%
       multiplier = (9900 / size).toFixed(4);
-      rollTargetDisplay = `${rangeMin} - ${rangeMax}`;
+      rollTargetDisplay = rangeMin === rangeMax ? `${rangeMin}` : `${rangeMin} - ${rangeMax}`;
   } else {
       multiplier = 0; winProbability = 0; rollTargetDisplay = '-';
   }
@@ -106,22 +98,15 @@ export default function CasinoTab() {
 
   const updateHack = async () => { if (hackData) { try { const data = await getCheatData(); setHackData(data); } catch(e) {} } }
 
-  useEffect(() => {
-    refreshData(); refreshHistory(); refreshFairness();
-    const interval = setInterval(() => { refreshData(); refreshHistory(); }, 2000)
-    return () => clearInterval(interval)
-  }, [])
+  useEffect(() => { refreshData(); refreshHistory(); refreshFairness(); const interval = setInterval(() => { refreshData(); refreshHistory(); }, 2000); return () => clearInterval(interval) }, [])
 
   const handleTransfer = async (e) => {
-    e.preventDefault(); 
-    setLoading(true);
-    const tid = toast.loading("Processing...");
+    e.preventDefault(); setLoading(true); const tid = toast.loading("Processing...");
     try {
       if (transferForm.direction === 'toCasino') await transferToCasino(transferForm.amount, activeCoin);
       else await transferToWallet(transferForm.amount, activeCoin);
       toast.success("Success", { id: tid }); await refreshData(); setTransferModal(null);
-    } catch (err) { toast.error(err.message, { id: tid }) }
-    finally { setLoading(false); }
+    } catch (err) { toast.error(err.message, { id: tid }) } finally { setLoading(false); }
   }
 
   const handlePlay = async () => {
@@ -170,24 +155,18 @@ export default function CasinoTab() {
     else if (type === 'max') setBetAmount(floorAmount(casinoBalance, 6)); 
   }
 
-  // --- CHEAT DISPLAY CONVERTER ---
   const getHackDisplay = () => {
       if (!hackData) return null;
       if (activeGame === 'ultimate') return Math.floor(parseFloat(hackData.nextRoll) * 100);
       return hackData.nextRoll;
   }
 
-  // --- LOBBY VIEW ---
   if (activeView === 'lobby') {
       return (
         <div className="max-w-6xl mx-auto space-y-8 pb-20 px-4 pt-4">
             <div className="flex items-center justify-between">
                 <h1 className="text-3xl font-bold text-[#eaecef] flex items-center gap-3"><LayoutGrid className="text-[#f3ba2f]" size={32} /> Casino Lobby</h1>
-                <div className="flex items-center gap-2">
-                    <button onClick={() => setFairnessModal(true)} className="bg-[#1e2329] px-4 py-2 rounded-xl border border-[#2b3139] text-sm font-bold text-[#0ecb81] flex items-center gap-2 hover:bg-[#2b3139]/80 transition-colors">
-                        <ShieldCheck size={16} /> Provably Fair
-                    </button>
-                </div>
+                <div className="flex items-center gap-2"><button onClick={() => setFairnessModal(true)} className="bg-[#1e2329] px-4 py-2 rounded-xl border border-[#2b3139] text-sm font-bold text-[#0ecb81] flex items-center gap-2 hover:bg-[#2b3139]/80 transition-colors"><ShieldCheck size={16} /> Provably Fair</button></div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div onClick={() => { setActiveGame('classic'); setActiveView('game'); }} className="bg-[#1e2329] border border-[#2b3139] rounded-2xl p-8 hover:border-[#f3ba2f] transition-all cursor-pointer group relative overflow-hidden">
@@ -196,7 +175,7 @@ export default function CasinoTab() {
                 </div>
                 <div onClick={() => { setActiveGame('ultimate'); setActiveView('game'); }} className="bg-[#1e2329] border border-[#2b3139] rounded-2xl p-8 hover:border-[#0ecb81] transition-all cursor-pointer group relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500"><Target size={120} className="text-[#0ecb81]" /></div>
-                    <div className="relative z-10"><div className="bg-[#0ecb81]/10 w-fit p-3 rounded-xl mb-4"><Crosshair size={32} className="text-[#0ecb81]" /></div><h2 className="text-2xl font-bold text-white mb-2">Ultimate Dice</h2><p className="text-[#848e9c]">Predict the exact Range of the outcome for massive 9900x multipliers.</p><div className="mt-6 flex items-center gap-2 text-sm font-bold text-[#0ecb81]">Play Now →</div></div>
+                    <div className="relative z-10"><div className="bg-[#0ecb81]/10 w-fit p-3 rounded-xl mb-4"><Crosshair size={32} className="text-[#0ecb81]" /></div><h2 className="text-2xl font-bold text-white mb-2">Ultimate Dice</h2><p className="text-[#848e9c]">Predict the exact Range (0-10000) for massive 9900x multipliers.</p><div className="mt-6 flex items-center gap-2 text-sm font-bold text-[#0ecb81]">Play Now →</div></div>
                 </div>
             </div>
             {fairnessModal && ( <Modal title="Fairness Settings" onClose={() => { setFairnessModal(false); setHackData(null); }}>{/* ... */}</Modal> )}
@@ -204,34 +183,25 @@ export default function CasinoTab() {
       )
   }
 
-  // --- GAME VIEW ---
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-20 px-4">
       <style>{`
         .range-slider-input { pointer-events: none; }
         .range-slider-input::-webkit-slider-thumb { pointer-events: auto; z-index: 50; position: relative; }
         .range-slider-input::-moz-range-thumb { pointer-events: auto; z-index: 50; position: relative; }
-        input[type=number].no-arrow::-webkit-inner-spin-button, 
-        input[type=number].no-arrow::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number].no-arrow::-webkit-inner-spin-button, input[type=number].no-arrow::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type=number].no-arrow { -moz-appearance: textfield; }
       `}</style>
       
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
             <button onClick={() => setActiveView('lobby')} className="p-2 bg-[#2b3139] rounded-lg text-[#848e9c] hover:text-white transition-colors"><ArrowLeft size={20} /></button>
-            <h1 className="text-2xl font-bold text-[#eaecef] flex items-center gap-3">
-                {activeGame === 'classic' ? <Dices className="text-[#f3ba2f]" /> : <Crosshair className="text-[#0ecb81]" />} 
-                {activeGame === 'classic' ? 'Classic Dice' : 'Ultimate Dice'}
-            </h1>
+            <h1 className="text-2xl font-bold text-[#eaecef] flex items-center gap-3">{activeGame === 'classic' ? <Dices className="text-[#f3ba2f]" /> : <Crosshair className="text-[#0ecb81]" />} {activeGame === 'classic' ? 'Classic Dice' : 'Ultimate Dice'}</h1>
         </div>
-        <button onClick={() => setFairnessModal(true)} className="bg-[#1e2329] px-3 py-1 rounded-lg border border-[#2b3139] text-xs font-bold text-[#0ecb81] flex items-center gap-2 hover:bg-[#2b3139]/80 transition-colors">
-          <ShieldCheck size={14} /> Provably Fair
-        </button>
+        <button onClick={() => setFairnessModal(true)} className="bg-[#1e2329] px-3 py-1 rounded-lg border border-[#2b3139] text-xs font-bold text-[#0ecb81] flex items-center gap-2 hover:bg-[#2b3139]/80 transition-colors"><ShieldCheck size={14} /> Provably Fair</button>
       </div>
 
-      {/* FAIRNESS MODAL */}
-      {fairnessModal && (
-        <Modal title="Fairness Settings" onClose={() => { setFairnessModal(false); setHackData(null); }}>
+      {fairnessModal && ( <Modal title="Fairness Settings" onClose={() => { setFairnessModal(false); setHackData(null); }}>
             <div className="space-y-6">
                 {hackData && (
                     <div className="bg-[#0b0e11] border border-[#0ecb81] p-4 rounded-xl shadow-[0_0_15px_rgba(14,203,129,0.2)] animate-in slide-in-from-top-4 duration-300">
@@ -246,8 +216,7 @@ export default function CasinoTab() {
                 <div><div onClick={handleSecretClick} className="flex items-center gap-2 text-xs font-bold text-[#848e9c] uppercase mb-1 cursor-pointer hover:text-[#eaecef] select-none transition-colors w-fit"><Lock size={12} /> Server Seed (Hashed)</div><div className="bg-[#0b0e11] p-3 rounded-lg text-xs font-mono text-[#eaecef] break-all border border-[#2b3139] shadow-inner">{fairness.hashedServerSeed || "Syncing..."}</div></div>
                 <div className="flex gap-4"><div className="flex-1"><label className="text-xs font-bold text-[#848e9c] uppercase mb-1 block">Client Seed</label><div className="flex gap-2"><input value={newClientSeed} onChange={e => setNewClientSeed(e.target.value)} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-lg p-2 text-white text-sm outline-none focus:border-[#f3ba2f]" /><button onClick={handleRotateSeed} className="bg-[#f3ba2f] text-black p-2 rounded-lg hover:bg-[#e0aa25] transition-colors"><RefreshCw size={16} /></button></div></div><div><label className="text-xs font-bold text-[#848e9c] uppercase mb-1 block">Nonce</label><div className="bg-[#0b0e11] p-2 rounded-lg text-sm font-mono text-[#eaecef] border border-[#2b3139] text-center w-20 shadow-inner">{fairness.nonce}</div></div></div>
             </div>
-        </Modal>
-      )}
+      </Modal> )}
 
       {/* BANKROLL CARD */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -275,7 +244,7 @@ export default function CasinoTab() {
         </div>
       </div>
 
-      {/* GAME BOARD */}
+      {/* GAME CONTROLS & VISUALIZER */}
       <div className="rounded-3xl border border-[#2b3139] bg-[#161a1e] overflow-hidden shadow-2xl relative">
         <div className="grid grid-cols-1 lg:grid-cols-4">
           <div className="lg:col-span-1 bg-[#1e2329] border-r border-[#2b3139] p-6 flex flex-col gap-6">
@@ -287,8 +256,8 @@ export default function CasinoTab() {
 
             {activeGame === 'ultimate' && (
                 <div className="grid grid-cols-2 gap-4">
-                    <div><label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Min Range</label><input type="number" min="0" max="9999" value={rangeMin} onChange={(e) => setRangeMin(Math.min(Number(e.target.value), rangeMax - 1))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none no-arrow" /></div>
-                    <div><label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Max Range</label><input type="number" min="1" max="10000" value={rangeMax} onChange={(e) => setRangeMax(Math.max(Number(e.target.value), rangeMin + 1))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none no-arrow" /></div>
+                    <div><label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Min</label><input type="number" min="0" max="9999" value={rangeMin} onChange={(e) => setRangeMin(Math.min(Number(e.target.value), rangeMax - 1))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none no-arrow" /></div>
+                    <div><label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Max</label><input type="number" min="1" max="10000" value={rangeMax} onChange={(e) => setRangeMax(Math.max(Number(e.target.value), rangeMin + 1))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none no-arrow" /></div>
                 </div>
             )}
 
@@ -355,6 +324,7 @@ export default function CasinoTab() {
         </div>
       </div>
 
+      {/* TABLE */}
       <div className="bg-[#161a1e] rounded-2xl border border-[#2b3139] overflow-hidden shadow-xl">
         <div className="px-6 py-4 border-b border-[#2b3139] flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#0ecb81] animate-pulse"/><h2 className="text-sm font-bold text-[#eaecef] uppercase tracking-wider">Latest {activeGame === 'classic' ? 'Classic' : 'Ultimate'} Bets</h2></div>
         <div className="overflow-x-auto">
@@ -370,7 +340,7 @@ export default function CasinoTab() {
                     <td className="py-4 px-6 text-[#848e9c] font-mono tabular-nums text-xs font-medium">{formatTime(row.time)}</td>
                     <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{formatNumber(row.bet, 4)} <span className="text-[10px] text-[#848e9c] font-sans">{row.currency}</span></td>
                     <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{row.multiplier}x</td>
-                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#848e9c]">{activeGame === 'ultimate' && row.target.includes('-') ? row.target : (parseFloat(row.target) ? `> ${parseFloat(row.target).toFixed(2)}` : row.target)}</td>
+                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#848e9c]">{row.target}</td>
                     <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.roll}</td>
                     <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.win ? '+' : ''}{formatNumber(row.profit, 4)}</td>
                   </tr>
@@ -384,7 +354,7 @@ export default function CasinoTab() {
         <form onSubmit={handleTransfer} className="space-y-6">
             <div className="bg-[#0b0e11] p-1 rounded-xl flex text-xs font-bold uppercase"><button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toCasino' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toCasino' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Deposit to Casino</button><button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toWallet' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toWallet' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Withdraw to Wallet</button></div>
             <div className="text-center py-4"><span className="text-[#848e9c] text-xs font-bold uppercase">Available Balance</span><div className="text-2xl font-black text-[#eaecef]">{transferForm.direction === 'toCasino' ? formatNumber(walletBalance, 6) : formatNumber(casinoBalance, 6)} <span className="text-sm ml-1 text-[#f3ba2f]">{activeCoin}</span></div></div>
-            <div className="relative"><label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label><input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" /></div>
+            <div className="relative"><label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label><input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none no-arrow" placeholder="0.00" /></div>
             <button type="submit" disabled={loading || !transferForm.amount} className="w-full py-4 bg-[#f3ba2f] text-[#0b0e11] font-black rounded-xl uppercase tracking-widest hover:bg-[#e0aa25] disabled:opacity-50">{loading ? 'Processing...' : 'Confirm Transfer'}</button>
         </form>
       </Modal>)}
