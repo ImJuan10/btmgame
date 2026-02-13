@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { 
-  Dices, ArrowRightLeft, Wallet, History, Trophy, AlertCircle, Coins, ShieldCheck, RefreshCw, EyeOff, Lock, ChevronDown, Check, LayoutGrid, ArrowLeft, Target, Settings2
+  Dices, ArrowRightLeft, Wallet, History, Trophy, AlertCircle, Coins, ShieldCheck, RefreshCw, EyeOff, Lock, ChevronDown, Check, Target, Crosshair, ArrowLeft, Settings2, LayoutGrid
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getHoldings, getPrices, transferToCasino, transferToWallet, casinoPlay, getCasinoHistory, getFairness, rotateSeed, getCheatData } from '../api'
@@ -76,7 +76,7 @@ export default function CasinoTab() {
       multiplier = 0; winProbability = 0; rollTargetDisplay = '-';
   }
   
-  const rollOverTarget = (100 - winChance).toFixed(0); // Classic slider value
+  const rollOverTarget = (100 - winChance).toFixed(0); 
   const potentialProfit = (parseFloat(betAmount || 0) * parseFloat(multiplier) - parseFloat(betAmount || 0))
   const casinoUsdValue = casinoBalance * currentPrice
   const profitUsdValue = potentialProfit * currentPrice
@@ -102,12 +102,7 @@ export default function CasinoTab() {
     }
   }
 
-  // AUTO-REFRESH HACK DATA
-  const updateHack = async () => {
-      if (hackData) {
-          try { const data = await getCheatData(); setHackData(data); } catch(e) {}
-      }
-  }
+  const updateHack = async () => { if (hackData) { try { const data = await getCheatData(); setHackData(data); } catch(e) {} } }
 
   useEffect(() => {
     refreshData(); refreshHistory(); refreshFairness();
@@ -149,7 +144,7 @@ export default function CasinoTab() {
 
         setLastResult(finalData.record);
         await refreshHistory(); await refreshData(); await refreshFairness();
-        await updateHack(); // CRITICAL: Update cheat display for NEXT round
+        await updateHack();
 
         if (finalData.record.win) toast.success(`Won ${formatNumber(finalData.record.profit, 6)} ${activeCoin}`, { icon: '🏆', style: { background: '#1e2329', color: '#0ecb81' }});
         else toast.error(`Lost ${formatNumber(amount, 6)} ${activeCoin}`, { icon: '💸', style: { background: '#1e2329', color: '#f6465d' }});
@@ -159,7 +154,7 @@ export default function CasinoTab() {
 
   const handleRotateSeed = async () => {
     const tid = toast.loading("Rotating...");
-    try { await rotateSeed(newClientSeed); await refreshFairness(); toast.success("Rotated", { id: tid }); await updateHack(); } 
+    try { await rotateSeed(newClientSeed); await refreshFairness(); toast.success("Rotated", { id: tid }); setHackData(null); } 
     catch(e) { toast.error("Failed", { id: tid }) }
   }
 
@@ -176,12 +171,10 @@ export default function CasinoTab() {
       return (
         <div className="max-w-6xl mx-auto space-y-8 pb-20 px-4 pt-4">
             <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold text-[#eaecef] flex items-center gap-3"><Dices className="text-[#f3ba2f]" size={32} /> Casino Lobby</h1>
-                <div className="flex items-center gap-2">
-                    <button onClick={() => setFairnessModal(true)} className="bg-[#1e2329] px-4 py-2 rounded-xl border border-[#2b3139] text-sm font-bold text-[#0ecb81] flex items-center gap-2 hover:bg-[#2b3139]/80 transition-colors">
-                        <ShieldCheck size={16} /> Provably Fair
-                    </button>
-                </div>
+                <h1 className="text-3xl font-bold text-[#eaecef] flex items-center gap-3"><LayoutGrid className="text-[#f3ba2f]" size={32} /> Casino Lobby</h1>
+                <button onClick={() => setFairnessModal(true)} className="bg-[#1e2329] px-4 py-2 rounded-xl border border-[#2b3139] text-sm font-bold text-[#0ecb81] flex items-center gap-2 hover:bg-[#2b3139]/80 transition-colors">
+                    <ShieldCheck size={16} /> Provably Fair
+                </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -208,23 +201,7 @@ export default function CasinoTab() {
                 </div>
             </div>
             
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-[#161a1e] border border-[#2b3139] p-4 rounded-xl flex items-center gap-4">
-                    <div className="bg-[#2b3139] p-3 rounded-lg"><Trophy size={20} className="text-[#f3ba2f]" /></div>
-                    <div><div className="text-xs text-[#848e9c] font-bold uppercase">Total Wins</div><div className="text-lg font-bold text-white">482,910</div></div>
-                </div>
-                <div className="bg-[#161a1e] border border-[#2b3139] p-4 rounded-xl flex items-center gap-4">
-                    <div className="bg-[#2b3139] p-3 rounded-lg"><Wallet size={20} className="text-[#0ecb81]" /></div>
-                    <div><div className="text-xs text-[#848e9c] font-bold uppercase">Volume (24h)</div><div className="text-lg font-bold text-white">$12,045,920</div></div>
-                </div>
-                <div className="bg-[#161a1e] border border-[#2b3139] p-4 rounded-xl flex items-center gap-4">
-                    <div className="bg-[#2b3139] p-3 rounded-lg"><Coins size={20} className="text-[#f6465d]" /></div>
-                    <div><div className="text-xs text-[#848e9c] font-bold uppercase">Active Players</div><div className="text-lg font-bold text-white">1,204</div></div>
-                </div>
-            </div>
-
-            {fairnessModal && ( <Modal title="Fairness Settings" onClose={() => { setFairnessModal(false); setHackData(null); }}>{/* ... (Keep your modal content here if needed global) ... */}</Modal> )}
+            {fairnessModal && ( <Modal title="Fairness Settings" onClose={() => { setFairnessModal(false); setHackData(null); }}>{/* Reusing Modal Content Logic Below */}</Modal> )}
         </div>
       )
   }
@@ -246,7 +223,7 @@ export default function CasinoTab() {
         </button>
       </div>
 
-      {/* FAIRNESS MODAL (Same as before) */}
+      {/* FAIRNESS MODAL */}
       {fairnessModal && (
         <Modal title="Fairness Settings" onClose={() => { setFairnessModal(false); setHackData(null); }}>
             <div className="space-y-6">
@@ -262,13 +239,19 @@ export default function CasinoTab() {
                         <div className="mt-3"><div className="text-[10px] text-[#848e9c] uppercase font-bold mb-1">Raw Server Seed (Secret)</div><div className="bg-[#1e2329] p-2 rounded text-[10px] font-mono text-red-400 break-all border border-red-500/20">{hackData.serverSeed}</div></div>
                     </div>
                 )}
-                <div><div onClick={handleSecretClick} className="flex items-center gap-2 text-xs font-bold text-[#848e9c] uppercase mb-1 cursor-pointer hover:text-[#eaecef] select-none transition-colors w-fit"><Lock size={12} /> Server Seed (Hashed)</div><div className="bg-[#0b0e11] p-3 rounded-lg text-xs font-mono text-[#eaecef] break-all border border-[#2b3139] shadow-inner">{fairness.hashedServerSeed || "Syncing..."}</div></div>
-                <div className="flex gap-4"><div className="flex-1"><label className="text-xs font-bold text-[#848e9c] uppercase mb-1 block">Client Seed</label><div className="flex gap-2"><input value={newClientSeed} onChange={e => setNewClientSeed(e.target.value)} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-lg p-2 text-white text-sm outline-none focus:border-[#f3ba2f]" /><button onClick={handleRotateSeed} className="bg-[#f3ba2f] text-black p-2 rounded-lg hover:bg-[#e0aa25] transition-colors"><RefreshCw size={16} /></button></div></div><div><label className="text-xs font-bold text-[#848e9c] uppercase mb-1 block">Nonce</label><div className="bg-[#0b0e11] p-2 rounded-lg text-sm font-mono text-[#eaecef] border border-[#2b3139] text-center w-20 shadow-inner">{fairness.nonce}</div></div></div>
+                <div>
+                    <div onClick={handleSecretClick} className="flex items-center gap-2 text-xs font-bold text-[#848e9c] uppercase mb-1 cursor-pointer hover:text-[#eaecef] select-none transition-colors w-fit"><Lock size={12} /> Server Seed (Hashed)</div>
+                    <div className="bg-[#0b0e11] p-3 rounded-lg text-xs font-mono text-[#eaecef] break-all border border-[#2b3139] shadow-inner">{fairness.hashedServerSeed || "Syncing..."}</div>
+                </div>
+                <div className="flex gap-4">
+                    <div className="flex-1"><label className="text-xs font-bold text-[#848e9c] uppercase mb-1 block">Client Seed</label><div className="flex gap-2"><input value={newClientSeed} onChange={e => setNewClientSeed(e.target.value)} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-lg p-2 text-white text-sm outline-none focus:border-[#f3ba2f]" /><button onClick={handleRotateSeed} className="bg-[#f3ba2f] text-black p-2 rounded-lg hover:bg-[#e0aa25] transition-colors"><RefreshCw size={16} /></button></div></div>
+                    <div><label className="text-xs font-bold text-[#848e9c] uppercase mb-1 block">Nonce</label><div className="bg-[#0b0e11] p-2 rounded-lg text-sm font-mono text-[#eaecef] border border-[#2b3139] text-center w-20 shadow-inner">{fairness.nonce}</div></div>
+                </div>
             </div>
         </Modal>
       )}
 
-      {/* BANKROLL CARD (With Non-Invasive Dropdown) */}
+      {/* BANKROLL CARD */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-2 rounded-2xl border border-[#2b3139] bg-[#161a1e] p-6 relative overflow-visible group z-30">
           <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><Trophy size={100} className="text-[#f3ba2f]" /></div>
@@ -298,11 +281,9 @@ export default function CasinoTab() {
         </div>
       </div>
 
-      {/* GAME CONTROLS & VISUALIZER */}
+      {/* GAME BOARD */}
       <div className="rounded-3xl border border-[#2b3139] bg-[#161a1e] overflow-hidden shadow-2xl relative">
         <div className="grid grid-cols-1 lg:grid-cols-4">
-          
-          {/* CONTROLS */}
           <div className="lg:col-span-1 bg-[#1e2329] border-r border-[#2b3139] p-6 flex flex-col gap-6">
             <div>
               <div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-[#848e9c] uppercase">Bet Amount</label><span className="text-[10px] font-bold text-[#848e9c]">Max: {formatNumber(casinoBalance, 6)}</span></div>
@@ -315,17 +296,10 @@ export default function CasinoTab() {
               </div>
             </div>
 
-            {/* CONDITIONAL CONTROLS: ULTIMATE DICE INPUTS */}
             {activeGame === 'ultimate' && (
                 <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Min Range</label>
-                        <input type="number" min="0" max="98" value={rangeMin} onChange={(e) => setRangeMin(Math.min(Number(e.target.value), rangeMax - 1))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none" />
-                    </div>
-                    <div>
-                        <label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Max Range</label>
-                        <input type="number" min="1" max="99" value={rangeMax} onChange={(e) => setRangeMax(Math.max(Number(e.target.value), rangeMin + 1))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none" />
-                    </div>
+                    <div><label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Min Range</label><input type="number" min="0" max="98" value={rangeMin} onChange={(e) => setRangeMin(Math.min(Number(e.target.value), rangeMax - 1))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none" /></div>
+                    <div><label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Max Range</label><input type="number" min="1" max="100" value={rangeMax} onChange={(e) => setRangeMax(Math.max(Number(e.target.value), rangeMin + 1))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none" /></div>
                 </div>
             )}
 
@@ -344,7 +318,6 @@ export default function CasinoTab() {
                <div className="text-center w-1/3"><div className="text-xs font-bold text-[#848e9c] uppercase mb-1">Win Chance</div><div className="text-xl font-black text-[#0ecb81] font-mono">{Number(winProbability).toFixed(2)}%</div></div>
             </div>
 
-            {/* VISUALIZER TRACK */}
             <div className="flex-1 flex flex-col justify-center select-none">
               <div className="relative h-12 w-full flex items-center">
                 <div className="absolute left-0 right-0 h-4 bg-[#2b3139] rounded-full overflow-hidden pointer-events-none">
@@ -360,16 +333,12 @@ export default function CasinoTab() {
                       </>
                   )}
                 </div>
-
-                {/* Classic Slider Input */}
                 {activeGame === 'classic' && (
                     <>
                         <input type="range" min="2" max="97" step="1" value={rollOverTarget} onChange={(e) => setWinChance(100 - Number(e.target.value))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" />
                         <div className="absolute w-10 h-10 bg-[#eaecef] rounded-xl shadow-2xl border-4 border-[#161a1e] flex items-center justify-center pointer-events-none transition-all duration-75 z-10" style={{ left: `calc(${rollOverTarget}% - 20px)` }}><ArrowRightLeft size={16} className="text-[#161a1e]" /></div>
                     </>
                 )}
-
-                {/* Result Popup */}
                 {lastResult && !isRolling && (
                   <div className="absolute -top-16 z-30 transition-all duration-300 pointer-events-none" style={{ left: `calc(${lastResult.roll}% - 30px)` }}>
                     <div className={`px-4 py-2 rounded-lg font-black text-lg shadow-2xl border-2 flex flex-col items-center animate-in zoom-in ${lastResult.win ? 'bg-[#0ecb81] border-[#0ecb81] text-[#0b0e11]' : 'bg-[#1e2329] border-[#f6465d] text-[#f6465d]'}`}>
@@ -387,44 +356,12 @@ export default function CasinoTab() {
         </div>
       </div>
 
-      {/* TABLE */}
-      <div className="bg-[#161a1e] rounded-2xl border border-[#2b3139] overflow-hidden shadow-xl">
-        <div className="px-6 py-4 border-b border-[#2b3139] flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#0ecb81] animate-pulse"/><h2 className="text-sm font-bold text-[#eaecef] uppercase tracking-wider">Latest Bets</h2></div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-xs text-[#848e9c] uppercase font-bold border-b border-[#2b3139]">
-                <th className="py-4 px-6">Time</th><th className="py-4 px-6 text-right">Bet</th><th className="py-4 px-6 text-right">Multiplier</th><th className="py-4 px-6 text-right">Target</th><th className="py-4 px-6 text-right">Outcome</th><th className="py-4 px-6 text-right">Profit</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#2b3139]/30">
-              {history.length === 0 ? (<tr><td colSpan={6} className="py-8 text-center text-[#848e9c] text-sm italic">No bets placed yet.</td></tr>) : (history.map((row) => (
-                  <tr key={row.id} className="hover:bg-[#1e2329] transition-colors">
-                    <td className="py-4 px-6 text-[#848e9c] font-mono tabular-nums text-xs font-medium">{formatTime(row.time)}</td>
-                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{formatNumber(row.bet, 4)} <span className="text-[10px] text-[#848e9c] font-sans">{row.currency}</span></td>
-                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{row.multiplier}x</td>
-                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#848e9c]">{gameMode === 'ultimate' && row.target.includes('-') ? row.target : (parseFloat(row.target) ? `> ${parseFloat(row.target).toFixed(2)}` : row.target)}</td>
-                    <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.roll}</td>
-                    <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.win ? '+' : ''}{formatNumber(row.profit, 4)}</td>
-                  </tr>
-              )))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       {transferModal && (
         <Modal title="Wallet Transfer" onClose={() => setTransferModal(null)}>
           <form onSubmit={handleTransfer} className="space-y-6">
-            <div className="bg-[#0b0e11] p-1 rounded-xl flex text-xs font-bold uppercase">
-              <button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toCasino' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toCasino' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Deposit to Casino</button>
-              <button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toWallet' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toWallet' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Withdraw to Wallet</button>
-            </div>
+            <div className="bg-[#0b0e11] p-1 rounded-xl flex text-xs font-bold uppercase"><button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toCasino' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toCasino' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Deposit to Casino</button><button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toWallet' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toWallet' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Withdraw to Wallet</button></div>
             <div className="text-center py-4"><span className="text-[#848e9c] text-xs font-bold uppercase">Available Balance</span><div className="text-2xl font-black text-[#eaecef]">{transferForm.direction === 'toCasino' ? formatNumber(walletBalance, 6) : formatNumber(casinoBalance, 6)} <span className="text-sm ml-1 text-[#f3ba2f]">{activeCoin}</span></div></div>
-            <div className="relative">
-              <label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label>
-              <input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" />
-            </div>
+            <div className="relative"><label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label><input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0.00" /></div>
             <button type="submit" disabled={loading || !transferForm.amount} className="w-full py-4 bg-[#f3ba2f] text-[#0b0e11] font-black rounded-xl uppercase tracking-widest hover:bg-[#e0aa25] disabled:opacity-50">{loading ? 'Processing...' : 'Confirm Transfer'}</button>
           </form>
         </Modal>
