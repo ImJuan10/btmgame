@@ -99,10 +99,10 @@ function ExpandedChart({ symbol, data, onClose, prices, holdings, refresh }) {
     <tr className="bg-[#1e2329]">
       <td colSpan={4} className="p-0">
         <div className="p-6 border-t border-[#2b3139] animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 font-sans">
             <div className="flex items-center gap-4">
               <span className="text-xl font-bold text-[#eaecef]">{symbol}/USDT</span>
-              <span className={`text-sm font-bold ${stats.isUp ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>
+              <span className={`text-sm font-bold font-mono ${stats.isUp ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>
                 {price < 1 ? price.toFixed(6) : formatNumber(price)}
               </span>
             </div>
@@ -112,14 +112,14 @@ function ExpandedChart({ symbol, data, onClose, prices, holdings, refresh }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 font-sans">
             <div className="lg:col-span-3 h-[350px] bg-[#161a1e] rounded-2xl border border-[#2b3139] p-4 relative overflow-hidden">
               {stats.chartData.length >= 2 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={stats.chartData} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
                     <defs><linearGradient id={`grad-${symbol}`} x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={stats.isUp ? '#0ecb81' : '#f6465d'} stopOpacity={0.3} /><stop offset="95%" stopColor={stats.isUp ? '#0ecb81' : '#f6465d'} stopOpacity={0} /></linearGradient></defs>
                     <YAxis domain={stats.domain} hide />
-                    <Tooltip isAnimationActive={false} cursor={{ stroke: '#848e9c', strokeWidth: 1, strokeDasharray: '4 4' }} content={({ active, payload }) => { if (active && payload?.length) { return (<div className="bg-[#1e2329] border border-[#2b3139] p-3 rounded-xl shadow-2xl pointer-events-none"><p className="text-[#848e9c] text-[10px] uppercase font-bold mb-1">{new Date(payload[0].payload.timestamp).toLocaleString()}</p><p className="font-bold text-[#eaecef] text-lg">${payload[0].value < 1 ? payload[0].value.toFixed(6) : formatNumber(payload[0].value)}</p></div>) } return null }} />
+                    <Tooltip isAnimationActive={false} cursor={{ stroke: '#848e9c', strokeWidth: 1, strokeDasharray: '4 4' }} content={({ active, payload }) => { if (active && payload?.length) { return (<div className="bg-[#1e2329] border border-[#2b3139] p-3 rounded-xl shadow-2xl pointer-events-none"><p className="text-[#848e9c] text-[10px] uppercase font-bold mb-1">{new Date(payload[0].payload.timestamp).toLocaleString()}</p><p className="font-bold text-[#eaecef] text-lg font-mono">${payload[0].value < 1 ? payload[0].value.toFixed(6) : formatNumber(payload[0].value)}</p></div>) } return null }} />
                     <Area type="monotone" dataKey="value" stroke={stats.isUp ? '#0ecb81' : '#f6465d'} strokeWidth={3} fill={`url(#grad-${symbol})`} isAnimationActive={false} activeDot={{ r: 6, fill: '#ffffff', stroke: stats.isUp ? '#0ecb81' : '#f6465d', strokeWidth: 2 }} />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -132,9 +132,8 @@ function ExpandedChart({ symbol, data, onClose, prices, holdings, refresh }) {
                 {tradeError && <div className="text-xs text-[#f6465d] bg-[#f6465d]/10 p-2 rounded-lg mb-4">{tradeError}</div>}
                 
                 <form onSubmit={handleBuy} className="space-y-3">
-                  <div className="flex justify-between text-[10px] font-bold uppercase text-[#848e9c]"><span>Buy {symbol}</span><span>Avail: {formatNumber(usdtBalance)} USDT</span></div>
+                  <div className="flex justify-between text-[10px] font-bold uppercase text-[#848e9c]"><span>Buy {symbol}</span><span className="font-mono">Avail: {formatNumber(usdtBalance)} USDT</span></div>
                   <div className="relative">
-                    {/* ADDED FONT-MONO FONT-BOLD */}
                     <input type="number" step="any" value={buyAmount} onChange={(e) => setBuyAmount(e.target.value)} placeholder="Amount" className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-sm text-white font-mono font-bold focus:border-[#0ecb81] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
                     <button type="button" onClick={setMaxBuy} className="absolute right-12 top-1/2 -translate-y-1/2 text-[10px] bg-[#2b3139] px-2 py-1 rounded text-[#0ecb81] hover:bg-[#363c45] font-bold transition-colors">MAX</button>
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#848e9c] text-xs font-bold uppercase pointer-events-none">{symbol}</span>
@@ -146,9 +145,8 @@ function ExpandedChart({ symbol, data, onClose, prices, holdings, refresh }) {
 
               <div className="pt-4 border-t border-[#2b3139]">
                 <form onSubmit={handleSell} className="space-y-3">
-                  <div className="flex justify-between text-[10px] font-bold uppercase text-[#848e9c]"><span>Sell {symbol}</span><span>Avail: {formatNumber(balance, 4)} {symbol}</span></div>
+                  <div className="flex justify-between text-[10px] font-bold uppercase text-[#848e9c]"><span>Sell {symbol}</span><span className="font-mono">Avail: {formatNumber(balance, 4)} {symbol}</span></div>
                   <div className="relative">
-                    {/* ADDED FONT-MONO FONT-BOLD */}
                     <input type="number" step="any" value={sellAmount} onChange={(e) => setSellAmount(e.target.value)} placeholder="Amount" className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-sm text-white font-mono font-bold focus:border-[#f6465d] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
                     <button type="button" onClick={setMaxSell} className="absolute right-12 top-1/2 -translate-y-1/2 text-[10px] bg-[#2b3139] px-2 py-1 rounded text-[#f6465d] hover:bg-[#363c45] font-bold transition-colors">MAX</button>
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#848e9c] text-xs font-bold uppercase pointer-events-none">{symbol}</span>
@@ -189,7 +187,7 @@ export default function MarketTab() {
   const displayCoins = currentFilter.coins
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-20 px-4">
+    <div className="max-w-6xl mx-auto space-y-6 pb-20 px-4 font-sans">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-[#eaecef]">Market Crypto</h1>
         <div className="flex bg-[#1e2329] rounded-lg p-1 border border-[#2b3139]">{FILTERS.map((f) => (<button key={f.id} onClick={() => setFilter(f.id)} className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${filter === f.id ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>{f.label}</button>))}</div>
