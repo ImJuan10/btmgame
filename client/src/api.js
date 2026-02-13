@@ -1,9 +1,6 @@
-// src/api.js
-
-// Dynamic URL: Uses Vercel/Netlify env var in production, localhost in dev
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-// --- USER SESSION MANAGEMENT ---
+// --- USER SESSION ---
 let currentUserId = localStorage.getItem('btm_user_id') || 'user_1';
 
 export const switchUser = (userId) => {
@@ -14,7 +11,6 @@ export const switchUser = (userId) => {
 
 export const getCurrentUser = () => currentUserId;
 
-// Helper to add headers (Content-Type + User ID)
 const headers = () => ({
     'Content-Type': 'application/json',
     'x-user-id': currentUserId
@@ -26,13 +22,11 @@ export const getPricesHistory = (pair) => fetch(`${API_BASE}/prices/${pair.repla
 export const getHoldings = () => fetch(`${API_BASE}/holdings`, { headers: headers() }).then(res => res.json());
 export const getBalances = () => fetch(`${API_BASE}/balances`, { headers: headers() }).then(res => res.json());
 export const getTransactions = () => fetch(`${API_BASE}/transactions`, { headers: headers() }).then(res => res.json());
-
-// --- CASINO DATA ---
 export const getCasinoHistory = () => fetch(`${API_BASE}/casino/history`, { headers: headers() }).then(res => res.json());
 export const getFairness = () => fetch(`${API_BASE}/casino/fairness`, { headers: headers() }).then(res => res.json());
 export const getCheatData = () => fetch(`${API_BASE}/casino/cheat`, { headers: headers() }).then(res => res.json());
 
-// --- ACTIONS (WALLET) ---
+// --- ACTIONS ---
 export const deposit = (amount, currency) => 
     fetch(`${API_BASE}/deposit`, { method: 'POST', headers: headers(), body: JSON.stringify({ amount, currency }) }).then(res => res.json());
 
@@ -45,7 +39,7 @@ export const buy = (pair, amount) =>
 export const sell = (pair, amount) => 
     fetch(`${API_BASE}/sell`, { method: 'POST', headers: headers(), body: JSON.stringify({ pair, amount }) }).then(res => { if(!res.ok) throw new Error('Failed'); return res.json() });
 
-// --- THE MISSING FUNCTION (FIX) ---
+// *** THIS IS THE FUNCTION THAT WAS MISSING ***
 export const swap = (from, to, amount) =>
     fetch(`${API_BASE}/swap`, {
         method: 'POST',
@@ -56,7 +50,6 @@ export const swap = (from, to, amount) =>
         return res.json();
     });
 
-// --- ACTIONS (CASINO) ---
 export const transferToCasino = (amount, currency) =>
     fetch(`${API_BASE}/transfer-to-casino`, { method: 'POST', headers: headers(), body: JSON.stringify({ amount, currency }) }).then(res => { if(!res.ok) throw new Error('Failed'); return res.json() });
 
@@ -69,7 +62,6 @@ export const casinoPlay = (amount, currency, game, winChance) =>
 export const rotateSeed = (newClientSeed) => 
     fetch(`${API_BASE}/casino/rotate-seed`, { method: 'POST', headers: headers(), body: JSON.stringify({ newClientSeed }) }).then(res => res.json());
 
-// --- UTILS ---
 export const marketHack = (direction) =>
     fetch(`${API_BASE}/market-hack`, { method: 'POST', headers: headers(), body: JSON.stringify({ direction }) }).then(res => res.json());
 
