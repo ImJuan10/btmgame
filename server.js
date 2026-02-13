@@ -122,8 +122,8 @@ const generateRoll = (serverSeed, clientSeed, nonce) => {
 const USERS = {
     'user_1': {
         name: "Whale Trader",
-        holdings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='USDT'?50000:c==='BC'?1000:0])) },
-        casinoHoldings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='BC'?500:0])) },
+        holdings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='USDT'?1:c==='BC'?0:0])) },
+        casinoHoldings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='BC'?0:0])) },
         addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
         serverSeed: generateServerSeed(), clientSeed: "lucky_client", nonce: 0
     },
