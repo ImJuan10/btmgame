@@ -69,15 +69,10 @@ export default function CasinoTab() {
       multiplier = (99 / winChance).toFixed(4);
       rollTargetDisplay = `> ${(100 - winChance).toFixed(2)}`;
   } else if (activeGame === 'ultimate') {
-      // Inclusive Size: (Max - Min) + 1. If Min=Max, Size=1.
-      const size = (rangeMax - rangeMin) + 1;
-      
-      // Probability: Size / 10000 
-      winProbability = (size / 10000) * 100; 
-      
-      // Multiplier: 9900 / Size
+      // INCLUSIVE SIZE
+      const size = Math.max(1, (rangeMax - rangeMin) + 1);
+      winProbability = size / 100; 
       multiplier = (9900 / size).toFixed(4);
-      
       rollTargetDisplay = rangeMin === rangeMax ? `${rangeMin}` : `${rangeMin} - ${rangeMax}`;
   } else {
       multiplier = 0; winProbability = 0; rollTargetDisplay = '-';
@@ -112,11 +107,7 @@ export default function CasinoTab() {
 
   const updateHack = async () => { if (hackData) { try { const data = await getCheatData(); setHackData(data); } catch(e) {} } }
 
-  useEffect(() => {
-    refreshData(); refreshHistory(); refreshFairness();
-    const interval = setInterval(() => { refreshData(); refreshHistory(); }, 2000)
-    return () => clearInterval(interval)
-  }, [])
+  useEffect(() => { refreshData(); refreshHistory(); refreshFairness(); const interval = setInterval(() => { refreshData(); refreshHistory(); }, 2000); return () => clearInterval(interval) }, [])
 
   const handleTransfer = async (e) => {
     e.preventDefault(); setLoading(true); const tid = toast.loading("Processing...");
@@ -174,7 +165,6 @@ export default function CasinoTab() {
     else if (type === 'max') setBetAmount(floorAmount(casinoBalance, 6)); 
   }
 
-  // --- CHEAT DISPLAY CONVERTER ---
   const getHackDisplay = () => {
       if (!hackData) return null;
       if (activeGame === 'ultimate') return Math.floor(parseFloat(hackData.nextRoll) * 100);
@@ -288,19 +278,10 @@ export default function CasinoTab() {
               <div className="grid grid-cols-4 gap-2 mt-2">{['Min', '1/2', '2x', 'Max'].map(label => (<button key={label} onClick={() => { if(label === 'Min') adjustBet('min'); if(label === '1/2') adjustBet('half'); if(label === '2x') adjustBet('double'); if(label === 'Max') adjustBet('max'); }} className="bg-[#2b3139] hover:bg-[#363c45] text-[#848e9c] hover:text-[#eaecef] py-1.5 rounded-lg text-[10px] font-bold uppercase transition-colors">{label}</button>))}</div>
             </div>
 
-            {/* CONDITIONAL CONTROLS */}
             {activeGame === 'ultimate' && (
                 <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Min Range</label>
-                      {/* FIX: Removed constraints (-1) to allow Min == Max */}
-                      <input type="number" min="0" max="9999" value={rangeMin} onChange={(e) => setRangeMin(Math.min(Number(e.target.value), rangeMax))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none no-arrow" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Max Range</label>
-                      {/* FIX: Removed constraints (+1) to allow Min == Max */}
-                      <input type="number" min="1" max="10000" value={rangeMax} onChange={(e) => setRangeMax(Math.max(Number(e.target.value), rangeMin))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none no-arrow" />
-                    </div>
+                    <div><label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Min Range</label><input type="number" min="0" max="9999" value={rangeMin} onChange={(e) => setRangeMin(Math.min(Number(e.target.value), rangeMax))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none no-arrow" /></div>
+                    <div><label className="text-[10px] font-bold text-[#848e9c] uppercase mb-1 block">Max Range</label><input type="number" min="1" max="10000" value={rangeMax} onChange={(e) => setRangeMax(Math.max(Number(e.target.value), rangeMin))} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#0ecb81] outline-none no-arrow" /></div>
                 </div>
             )}
 
@@ -344,7 +325,6 @@ export default function CasinoTab() {
 
                 {activeGame === 'ultimate' && (
                     <>
-                        {/* FIX: Allowed Overlap via Math.min/max logic above */}
                         <input type="range" min="0" max="9999" step="1" value={rangeMin} onChange={(e) => setRangeMin(Math.min(Number(e.target.value), rangeMax))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20 range-slider-input" style={{ zIndex: rangeMin > 9000 ? 30 : 20 }} />
                         <div className="absolute w-6 h-10 bg-[#eaecef] rounded-md shadow-2xl border-4 border-[#161a1e] flex items-center justify-center pointer-events-none transition-all duration-75 z-10" style={{ left: `calc(${rangeMin / 100}% - 12px)` }}></div>
                         <input type="range" min="0" max="10000" step="1" value={rangeMax} onChange={(e) => setRangeMax(Math.max(Number(e.target.value), rangeMin))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20 range-slider-input" />
@@ -368,37 +348,16 @@ export default function CasinoTab() {
         </div>
       </div>
 
-      {/* TABLE */}
-      <div className="bg-[#161a1e] rounded-2xl border border-[#2b3139] overflow-hidden shadow-xl">
-        <div className="px-6 py-4 border-b border-[#2b3139] flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-[#0ecb81] animate-pulse"/><h2 className="text-sm font-bold text-[#eaecef] uppercase tracking-wider">Latest {activeGame === 'classic' ? 'Classic' : 'Ultimate'} Bets</h2></div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="text-xs text-[#848e9c] uppercase font-bold border-b border-[#2b3139]">
-                <th className="py-4 px-6">Time</th><th className="py-4 px-6 text-right">Bet</th><th className="py-4 px-6 text-right">Multiplier</th><th className="py-4 px-6 text-right">Target</th><th className="py-4 px-6 text-right">Outcome</th><th className="py-4 px-6 text-right">Profit</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#2b3139]/30">
-              {gameHistory.length === 0 ? (<tr><td colSpan={6} className="py-8 text-center text-[#848e9c] text-sm italic">No bets placed yet.</td></tr>) : (gameHistory.map((row) => (
-                  <tr key={row.id} className="hover:bg-[#1e2329] transition-colors">
-                    <td className="py-4 px-6 text-[#848e9c] font-mono tabular-nums text-xs font-medium">{formatTime(row.time)}</td>
-                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{formatNumber(row.bet, 4)} <span className="text-[10px] text-[#848e9c] font-sans">{row.currency}</span></td>
-                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{row.multiplier}x</td>
-                    <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#848e9c]">{activeGame === 'ultimate' && row.target.includes('-') ? row.target : (parseFloat(row.target) ? `> ${parseFloat(row.target).toFixed(2)}` : row.target)}</td>
-                    <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.roll}</td>
-                    <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.win ? '+' : ''}{formatNumber(row.profit, 4)}</td>
-                  </tr>
-              )))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
       {transferModal && (<Modal title="Wallet Transfer" onClose={() => setTransferModal(null)}>
         <form onSubmit={handleTransfer} className="space-y-6">
             <div className="bg-[#0b0e11] p-1 rounded-xl flex text-xs font-bold uppercase"><button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toCasino' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toCasino' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Deposit to Casino</button><button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toWallet' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toWallet' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Withdraw to Wallet</button></div>
             <div className="text-center py-4"><span className="text-[#848e9c] text-xs font-bold uppercase">Available Balance</span><div className="text-2xl font-black text-[#eaecef]">{transferForm.direction === 'toCasino' ? formatNumber(walletBalance, 6) : formatNumber(casinoBalance, 6)} <span className="text-sm ml-1 text-[#f3ba2f]">{activeCoin}</span></div></div>
-            <div className="relative"><label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label><input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none no-arrow" placeholder="0.00" /></div>
+            <div className="relative">
+                <label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label>
+                <input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none no-arrow" placeholder="0.00" />
+                {/* ADDED MAX BUTTON */}
+                <button type="button" onClick={() => setTransferForm({ ...transferForm, amount: transferForm.direction === 'toCasino' ? walletBalance : casinoBalance })} className="absolute right-3 top-9 text-[10px] bg-[#2b3139] px-2 py-1 rounded text-[#f3ba2f] hover:bg-[#363c45] font-bold">MAX</button>
+            </div>
             <button type="submit" disabled={loading || !transferForm.amount} className="w-full py-4 bg-[#f3ba2f] text-[#0b0e11] font-black rounded-xl uppercase tracking-widest hover:bg-[#e0aa25] disabled:opacity-50">{loading ? 'Processing...' : 'Confirm Transfer'}</button>
         </form>
       </Modal>)}
