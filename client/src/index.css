@@ -12,6 +12,7 @@
   --accent-red: #f6465d;
   --accent-yellow: #f0b90b;
   --accent-blue: #3861fb;
+  font-family: 'JetBrains Mono', monospace;
 }
 
 body {
