@@ -92,7 +92,6 @@ function ExpandedChart({ symbol, data, onClose, prices, holdings, refresh }) {
     finally { setSellLoading(false) }
   }
 
-  // Helper for MAX logic
   const setMaxBuy = () => { if (price > 0) setBuyAmount((usdtBalance / price).toFixed(6)); }
   const setMaxSell = () => setSellAmount(balance.toFixed(6)); 
   
@@ -135,8 +134,8 @@ function ExpandedChart({ symbol, data, onClose, prices, holdings, refresh }) {
                 <form onSubmit={handleBuy} className="space-y-3">
                   <div className="flex justify-between text-[10px] font-bold uppercase text-[#848e9c]"><span>Buy {symbol}</span><span>Avail: {formatNumber(usdtBalance)} USDT</span></div>
                   <div className="relative">
-                    <input type="number" step="any" value={buyAmount} onChange={(e) => setBuyAmount(e.target.value)} placeholder="Amount" className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-sm text-white focus:border-[#0ecb81] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
-                    {/* FIXED: ALIGNED TO VERTICAL CENTER */}
+                    {/* ADDED FONT-MONO FONT-BOLD */}
+                    <input type="number" step="any" value={buyAmount} onChange={(e) => setBuyAmount(e.target.value)} placeholder="Amount" className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-sm text-white font-mono font-bold focus:border-[#0ecb81] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
                     <button type="button" onClick={setMaxBuy} className="absolute right-12 top-1/2 -translate-y-1/2 text-[10px] bg-[#2b3139] px-2 py-1 rounded text-[#0ecb81] hover:bg-[#363c45] font-bold transition-colors">MAX</button>
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#848e9c] text-xs font-bold uppercase pointer-events-none">{symbol}</span>
                   </div>
@@ -149,8 +148,8 @@ function ExpandedChart({ symbol, data, onClose, prices, holdings, refresh }) {
                 <form onSubmit={handleSell} className="space-y-3">
                   <div className="flex justify-between text-[10px] font-bold uppercase text-[#848e9c]"><span>Sell {symbol}</span><span>Avail: {formatNumber(balance, 4)} {symbol}</span></div>
                   <div className="relative">
-                    <input type="number" step="any" value={sellAmount} onChange={(e) => setSellAmount(e.target.value)} placeholder="Amount" className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-sm text-white focus:border-[#f6465d] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
-                    {/* FIXED: ALIGNED TO VERTICAL CENTER */}
+                    {/* ADDED FONT-MONO FONT-BOLD */}
+                    <input type="number" step="any" value={sellAmount} onChange={(e) => setSellAmount(e.target.value)} placeholder="Amount" className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-sm text-white font-mono font-bold focus:border-[#f6465d] outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" />
                     <button type="button" onClick={setMaxSell} className="absolute right-12 top-1/2 -translate-y-1/2 text-[10px] bg-[#2b3139] px-2 py-1 rounded text-[#f6465d] hover:bg-[#363c45] font-bold transition-colors">MAX</button>
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#848e9c] text-xs font-bold uppercase pointer-events-none">{symbol}</span>
                   </div>
