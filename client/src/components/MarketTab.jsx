@@ -202,16 +202,32 @@ export default function MarketTab() {
           <table className="w-full text-left border-collapse">
             <thead><tr className="text-xs text-[#848e9c] uppercase font-bold border-b border-[#2b3139] font-sans"><th className="py-4 px-6">Pair</th><th className="py-4 px-6 text-right">Last Price</th><th className="py-4 px-6 text-right">24h Change</th><th className="py-4 px-6 text-right w-40">Market Trend</th></tr></thead>
             <tbody className="divide-y divide-[#2b3139]/30">
-              {displayCoins.map((symbol) => {
-                const price = prices[symbol]; const hist = history[symbol] || []; const first = hist[0]?.price || price; const diff = price - first; const pct = first ? (diff / first) * 100 : 0; const isUp = diff >= 0;
-                return (
-                  <Fragment key={symbol}>
-                    <tr onClick={() => setExpandedSymbol(expandedSymbol === symbol ? null : symbol)} className={`cursor-pointer transition-colors hover:bg-[#1e2329] ${expandedSymbol === symbol ? 'bg-[#1e2329]' : ''}`}>
-                      <td className="py-5 px-6"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-[#2b3139] flex items-center justify-center font-black text-xs font-sans">{symbol.substring(0, 2)}</div><span className="font-bold text-[#eaecef] font-sans">{symbol}/USDT</span></div></td>
-                      <td className="py-5 px-6 text-right font-mono font-bold text-[#eaecef]">{price < 1 ? price.toFixed(6) : formatNumber(price)}</td>
-                      <td className={`py-5 px-6 text-right font-bold font-mono ${isUp ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{isUp ? '+' : ''}{pct.toFixed(2)}%</td>
-                      <td className="py-4 px-6"><SparklineCell data={hist} symbol={symbol} /></td>
-                    </tr>
+  {displayCoins.map((symbol) => {
+    const price = prices[symbol]; const hist = history[symbol] || []; const first = hist[0]?.price || price; const diff = price - first; const pct = first ? (diff / first) * 100 : 0; const isUp = diff >= 0;
+    return (
+      <Fragment key={symbol}>
+        <tr onClick={() => setExpandedSymbol(expandedSymbol === symbol ? null : symbol)} className={`cursor-pointer transition-colors hover:bg-[#1e2329] ${expandedSymbol === symbol ? 'bg-[#1e2329]' : ''}`}>
+          
+          {/* PAIR NAME (Already Sans, just ensuring) */}
+          <td className="py-5 px-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#2b3139] flex items-center justify-center font-black text-xs font-sans">{symbol.substring(0, 2)}</div>
+              <span className="font-bold text-[#eaecef] font-sans">{symbol}/USDT</span>
+            </div>
+          </td>
+
+          {/* LAST PRICE: Changed to font-sans tabular-nums */}
+          <td className="py-5 px-6 text-right font-bold text-[#eaecef] font-sans tabular-nums">
+            {price < 1 ? price.toFixed(6) : formatNumber(price)}
+          </td>
+
+          {/* 24H CHANGE: Changed to font-sans tabular-nums */}
+          <td className={`py-5 px-6 text-right font-bold font-sans tabular-nums ${isUp ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>
+            {isUp ? '+' : ''}{pct.toFixed(2)}%
+          </td>
+
+          <td className="py-4 px-6"><SparklineCell data={hist} symbol={symbol} /></td>
+        </tr>
                     {expandedSymbol === symbol && (<ExpandedChart symbol={symbol} data={hist} onClose={() => setExpandedSymbol(null)} prices={prices} holdings={holdings} refresh={refresh} />)}
                   </Fragment>
                 )
