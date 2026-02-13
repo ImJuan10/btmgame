@@ -12,15 +12,15 @@ app.use(express.json());
 // ==========================================
 
 let prices = {
-    BTC: 0.00089,
-    ETH: 0.32,
-    DOGE: 0.0000869,
+    BTC: 1.8,
+    ETH: 32,
+    DOGE: 0.0869,
     SHIB: 0.000007,
-    TON: 0.39,
-    TRX: 0.08,
-    LTC: 1.1,
-    LUNA: 1.35,
-    BC: 0.0001,
+    TON: 1.9,
+    TRX: 0.8,
+    LTC: 0.11,
+    LUNA: 0.35,
+    BC: 0.134,
     USDT: 1,
 };
 
@@ -197,8 +197,8 @@ const USERS = {
     'user_1': {
         name: "Whale Trader",
         // Init all coins
-        holdings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='USDT'?50000:c==='BC'?1000:0])) },
-        casinoHoldings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='BC'?500:0])) },
+        holdings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='USDT'?1:c==='BC'?0:0])) },
+        casinoHoldings: { ...Object.fromEntries(Object.keys(prices).map(c => [c, c==='BC'?0:0])) },
         addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
         serverSeed: generateServerSeed(), clientSeed: "lucky_client", nonce: 0
     },
