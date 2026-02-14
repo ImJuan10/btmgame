@@ -37,14 +37,14 @@ const generateRoll = (serverSeed, clientSeed, nonce) => {
 const USERS = {
     'user_1': {
         name: "Whale Trader",
-        holdings: { ...Object.fromEntries(COINS.map(c => [c, c === 'USDT' ? 0 : c === 'BC' ? 0 : 0])) },
+        holdings: { ...Object.fromEntries(COINS.map(c => [c, c === 'USDT' ? 0.01 : c === 'BC' ? 0 : 0])) },
         casinoHoldings: { ...Object.fromEntries(COINS.map(c => [c, c === 'BC' ? 0 : 0])) },
         addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
         serverSeed: generateServerSeed(), clientSeed: "lucky_client", nonce: 0
     },
     'user_2': {
         name: "Newbie Degen",
-        holdings: { ...Object.fromEntries(COINS.map(c => [c, c === 'USDT' ? 0 : c === 'BC' ? 0 : 0])) },
+        holdings: { ...Object.fromEntries(COINS.map(c => [c, c === 'USDT' ? 0.01 : c === 'BC' ? 0 : 0])) },
         casinoHoldings: { ...Object.fromEntries(COINS.map(c => [c, 0])) },
         addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
         serverSeed: generateServerSeed(), clientSeed: "newbie_seed", nonce: 0
@@ -56,7 +56,7 @@ const getUser = (req) => USERS[req.headers['x-user-id'] || 'user_1'] || USERS['u
 // --- SIMULATION LOOP ---
 function generateRandomDuration() { return Math.floor(Math.random() * (45 - 30 + 1)) + 30; }
 function simulatePriceChange(currentPrice, currency) {
-    let trendDirection = Math.random() < 0.55 ? 0.78 : -0.78;
+    let trendDirection = Math.random() < 0.55 ? 0.91 : -0.91;
     let trendStrength = Math.random() * 0.002 + 0.001;
     const currentTime = Date.now();
     const elapsed = (currentTime - probabilityState.startTime) / 1000;
@@ -91,7 +91,7 @@ function simulatePriceChange(currentPrice, currency) {
         simulatePriceChange.trendState = { remaining: Math.floor(Math.random() * 10) + 5, direction: Math.random() < currentDynamicProbability ? 1 : -1 };
         changePercentage = Math.random() * 0.005 * (Math.random() < currentDynamicProbability ? -1 : 1);
     }
-    if (Math.random() < 0.005) changePercentage += (Math.random() * 0.01 + 0.05) * (Math.random() < currentDynamicProbability ? -1 : 1);
+    if (Math.random() < 0.005) changePercentage += (Math.random() * 0.001 + 0.005) * (Math.random() < currentDynamicProbability ? -0.95 : 0.95);
 
     let newPrice = currentPrice * (1 + changePercentage);
     if (currency === 'USDT') return Math.random() * (1.001 - 0.999) + 0.999;
