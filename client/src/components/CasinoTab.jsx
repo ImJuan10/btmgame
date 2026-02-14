@@ -389,8 +389,31 @@ export default function CasinoTab() {
                 </div>
             </div>
 
-            <div className="relative"><label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label><input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none no-arrow" placeholder="0.00" /></div>
-            <button type="submit" disabled={loading || !transferForm.amount} className="w-full py-4 bg-[#f3ba2f] text-[#0b0e11] font-black rounded-xl uppercase tracking-widest hover:bg-[#e0aa25] disabled:opacity-50">{loading ? 'Processing...' : 'Confirm Transfer'}</button>
+            {/* Replace the 'Amount' div in the transferModal with this: */}
+<div className="relative">
+    <label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label>
+    
+    <input 
+        type="number" 
+        step="any" 
+        value={transferForm.amount} 
+        onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} 
+        className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none no-arrow" 
+        placeholder="0.00" 
+    />
+    
+    <button 
+        type="button" 
+        onClick={() => setTransferForm({ 
+            ...transferForm, 
+            amount: transferForm.direction === 'toCasino' ? walletBalance : casinoBalance 
+        })} 
+        className="absolute right-3 top-9 text-[10px] bg-[#2b3139] px-2 py-1 rounded text-[#f3ba2f] hover:bg-[#363c45] font-bold transition-colors"
+    >
+        MAX
+    </button>
+</div>
+          <button type="submit" disabled={loading || !transferForm.amount} className="w-full py-4 bg-[#f3ba2f] text-[#0b0e11] font-black rounded-xl uppercase tracking-widest hover:bg-[#e0aa25] disabled:opacity-50">{loading ? 'Processing...' : 'Confirm Transfer'}</button>
         </form>
       </Modal>)}
     </div>
