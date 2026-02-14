@@ -7,12 +7,12 @@ import { getHoldings, getPrices, transferToCasino, transferToWallet, casinoPlay,
 
 const COINS = ['BTC', 'ETH', 'DOGE', 'SHIB', 'TON', 'TRX', 'LTC', 'LUNA', 'BC', 'USDT'];
 
-// ... Utils ...
+// --- UTILS ---
 function formatNumber(num, decimals = 2) { if (num == null || Number.isNaN(num)) return '0.00'; return Number(num).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) }
 function formatTime(dateString) { try { return new Date(dateString).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) } catch (e) { return "--:--" } }
 function floorAmount(amount, decimals = 6) { if (!amount) return '0'; const factor = Math.pow(10, decimals); return (Math.floor(amount * factor) / factor).toString(); }
 
-// ... Modal ... (Same as before)
+// --- MODAL ---
 function Modal({ title, onClose, children }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
@@ -82,10 +82,9 @@ export default function CasinoTab() {
   const casinoUsdValue = casinoBalance * currentPrice
   const profitUsdValue = potentialProfit * currentPrice
 
-  // FILTER HISTORY FOR CURRENT GAME
   const gameHistory = history.filter(h => h.game === activeGame);
-  
   const dropdownRef = useRef(null)
+
   useEffect(() => {
     function handleClickOutside(event) { if (dropdownRef.current && !dropdownRef.current.contains(event.target)) setIsCoinListOpen(false) }
     document.addEventListener("mousedown", handleClickOutside); return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -107,11 +106,7 @@ export default function CasinoTab() {
 
   const updateHack = async () => { if (hackData) { try { const data = await getCheatData(); setHackData(data); } catch(e) {} } }
 
-  useEffect(() => {
-    refreshData(); refreshHistory(); refreshFairness();
-    const interval = setInterval(() => { refreshData(); refreshHistory(); }, 2000)
-    return () => clearInterval(interval)
-  }, [])
+  useEffect(() => { refreshData(); refreshHistory(); refreshFairness(); const interval = setInterval(() => { refreshData(); refreshHistory(); }, 2000); return () => clearInterval(interval) }, [])
 
   const handleTransfer = async (e) => {
     e.preventDefault(); setLoading(true); const tid = toast.loading("Processing...");
@@ -226,6 +221,7 @@ export default function CasinoTab() {
         </button>
       </div>
 
+      {/* FAIRNESS MODAL */}
       {fairnessModal && (
         <Modal title="Fairness Settings" onClose={() => { setFairnessModal(false); setHackData(null); }}>
             <div className="space-y-6">
@@ -262,8 +258,6 @@ export default function CasinoTab() {
             <div><button onClick={() => { setTransferForm({direction: 'toCasino', amount: ''}); setTransferModal(true) }} className="px-5 py-2.5 bg-[#2b3139] hover:bg-[#363c45] text-[#eaecef] rounded-xl text-xs font-bold uppercase border border-[#474d57] transition-all active:scale-95 flex items-center gap-2"><ArrowRightLeft size={14} /> Deposit / Withdraw</button></div>
           </div>
         </div>
-        
-        {/* MINI HISTORY (FILTERED FOR ACTIVE GAME) */}
         <div className="rounded-2xl border border-[#2b3139] bg-[#161a1e] p-4 flex flex-col min-h-[140px]">
           <p className="text-[#848e9c] text-xs font-bold uppercase tracking-widest mb-3 flex items-center gap-2"><History size={14} /> Recent Rolls</p>
           <div className="flex-1 flex gap-2 overflow-x-auto items-center md:flex-wrap content-start scrollbar-hide">
@@ -273,7 +267,7 @@ export default function CasinoTab() {
         </div>
       </div>
 
-      {/* GAME CONTROLS & VISUALIZER */}
+      {/* GAME BOARD */}
       <div className="rounded-3xl border border-[#2b3139] bg-[#161a1e] overflow-hidden shadow-2xl relative">
         <div className="grid grid-cols-1 lg:grid-cols-4">
           <div className="lg:col-span-1 bg-[#1e2329] border-r border-[#2b3139] p-6 flex flex-col gap-6">
@@ -316,7 +310,7 @@ export default function CasinoTab() {
                   ) : (
                       <>
                         <div className="absolute inset-0 bg-[#f6465d]" />
-                        <div className="absolute top-0 bottom-0 bg-[#0ecb81] transition-all duration-75" style={{ left: `${rangeMin / 100}%`, width: `${((rangeMax - rangeMin) + 1) / 100}%` }}/>
+                        <div className="absolute top-0 bottom-0 bg-[#0ecb81] transition-all duration-75" style={{ left: `${rangeMin / 100}%`, width: `${(rangeMax - rangeMin) / 100}%` }}/>
                       </>
                   )}
                 </div>
@@ -371,7 +365,10 @@ export default function CasinoTab() {
                     <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#eaecef]">{row.multiplier}x</td>
                     <td className="py-4 px-6 text-right font-mono tabular-nums text-xs font-medium text-[#848e9c]">{activeGame === 'ultimate' && row.target.includes('-') ? row.target : (parseFloat(row.target) ? `> ${parseFloat(row.target).toFixed(2)}` : row.target)}</td>
                     <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.roll}</td>
-                    <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>{row.win ? '+' : ''}{formatNumber(row.profit, 4)}</td>
+                    {/* ADDED CURRENCY SUFFIX TO PROFIT */}
+                    <td className={`py-4 px-6 text-right font-mono tabular-nums text-xs font-medium ${row.win ? 'text-[#0ecb81]' : 'text-[#f6465d]'}`}>
+                      {row.win ? '+' : ''}{formatNumber(row.profit, 4)} <span className="text-[10px] text-[#848e9c] font-sans">{row.currency}</span>
+                    </td>
                   </tr>
               )))}
             </tbody>
@@ -382,13 +379,17 @@ export default function CasinoTab() {
       {transferModal && (<Modal title="Wallet Transfer" onClose={() => setTransferModal(null)}>
         <form onSubmit={handleTransfer} className="space-y-6">
             <div className="bg-[#0b0e11] p-1 rounded-xl flex text-xs font-bold uppercase"><button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toCasino' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toCasino' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Deposit to Casino</button><button type="button" onClick={() => setTransferForm({ ...transferForm, direction: 'toWallet' })} className={`flex-1 py-3 rounded-lg transition-colors ${transferForm.direction === 'toWallet' ? 'bg-[#2b3139] text-[#eaecef]' : 'text-[#848e9c] hover:text-[#eaecef]'}`}>Withdraw to Wallet</button></div>
-            <div className="text-center py-4"><span className="text-[#848e9c] text-xs font-bold uppercase">Available Balance</span><div className="text-2xl font-black text-[#eaecef]">{transferForm.direction === 'toCasino' ? formatNumber(walletBalance, 6) : formatNumber(casinoBalance, 6)} <span className="text-sm ml-1 text-[#f3ba2f]">{activeCoin}</span></div></div>
-            <div className="relative">
-                <label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label>
-                <input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none no-arrow" placeholder="0.00" />
-                {/* ADDED MAX BUTTON */}
-                <button type="button" onClick={() => setTransferForm({ ...transferForm, amount: transferForm.direction === 'toCasino' ? walletBalance : casinoBalance })} className="absolute right-3 top-9 text-[10px] bg-[#2b3139] px-2 py-1 rounded text-[#f3ba2f] hover:bg-[#363c45] font-bold">MAX</button>
+            
+            {/* UPDATED BALANCE DISPLAY WITH FLEX GAP */}
+            <div className="text-center py-4">
+                <span className="text-[#848e9c] text-xs font-bold uppercase">Available Balance</span>
+                <div className="flex items-baseline justify-center gap-2 text-2xl font-black text-[#eaecef] mt-1">
+                    <span>{transferForm.direction === 'toCasino' ? formatNumber(walletBalance, 6) : formatNumber(casinoBalance, 6)}</span>
+                    <span className="text-sm text-[#f3ba2f]">{activeCoin}</span>
+                </div>
             </div>
+
+            <div className="relative"><label className="block text-[10px] font-bold text-[#848e9c] uppercase mb-2">Amount</label><input type="number" step="any" value={transferForm.amount} onChange={(e) => setTransferForm({ ...transferForm, amount: e.target.value })} className="w-full bg-[#0b0e11] border border-[#2b3139] rounded-xl p-3 text-white font-mono focus:border-[#f3ba2f] outline-none no-arrow" placeholder="0.00" /></div>
             <button type="submit" disabled={loading || !transferForm.amount} className="w-full py-4 bg-[#f3ba2f] text-[#0b0e11] font-black rounded-xl uppercase tracking-widest hover:bg-[#e0aa25] disabled:opacity-50">{loading ? 'Processing...' : 'Confirm Transfer'}</button>
         </form>
       </Modal>)}
