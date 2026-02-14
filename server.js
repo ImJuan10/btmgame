@@ -37,14 +37,14 @@ const generateRoll = (serverSeed, clientSeed, nonce) => {
 const USERS = {
     'user_1': {
         name: "Whale Trader",
-        holdings: { ...Object.fromEntries(COINS.map(c => [c, c === 'USDT' ? 50000 : c === 'BC' ? 1000 : 0])) },
-        casinoHoldings: { ...Object.fromEntries(COINS.map(c => [c, c === 'BC' ? 500 : 0])) },
+        holdings: { ...Object.fromEntries(COINS.map(c => [c, c === 'USDT' ? 0 : c === 'BC' ? 0 : 0])) },
+        casinoHoldings: { ...Object.fromEntries(COINS.map(c => [c, c === 'BC' ? 0 : 0])) },
         addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
         serverSeed: generateServerSeed(), clientSeed: "lucky_client", nonce: 0
     },
     'user_2': {
         name: "Newbie Degen",
-        holdings: { ...Object.fromEntries(COINS.map(c => [c, c === 'USDT' ? 100 : c === 'BC' ? 10 : 0])) },
+        holdings: { ...Object.fromEntries(COINS.map(c => [c, c === 'USDT' ? 0 : c === 'BC' ? 0 : 0])) },
         casinoHoldings: { ...Object.fromEntries(COINS.map(c => [c, 0])) },
         addresses: {}, transactions: [], casinoHistory: [], balanceHistory: [],
         serverSeed: generateServerSeed(), clientSeed: "newbie_seed", nonce: 0
