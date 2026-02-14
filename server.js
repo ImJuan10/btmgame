@@ -56,8 +56,8 @@ const getUser = (req) => USERS[req.headers['x-user-id'] || 'user_1'] || USERS['u
 // --- SIMULATION LOOP ---
 function generateRandomDuration() { return Math.floor(Math.random() * (45 - 30 + 1)) + 30; }
 function simulatePriceChange(currentPrice, currency) {
-    let trendDirection = Math.random() < 0.55 ? 1 : -1;
-    let trendStrength = Math.random() * 0.02 + 0.01;
+    let trendDirection = Math.random() < 0.55 ? 0.78 : -0.78;
+    let trendStrength = Math.random() * 0.002 + 0.001;
     const currentTime = Date.now();
     const elapsed = (currentTime - probabilityState.startTime) / 1000;
 
@@ -91,16 +91,9 @@ function simulatePriceChange(currentPrice, currency) {
         simulatePriceChange.trendState = { remaining: Math.floor(Math.random() * 10) + 5, direction: Math.random() < currentDynamicProbability ? 1 : -1 };
         changePercentage = Math.random() * 0.005 * (Math.random() < currentDynamicProbability ? -1 : 1);
     }
-    if (Math.random() < 0.005) changePercentage += (Math.random() * 0.1 + 0.05) * (Math.random() < currentDynamicProbability ? -1 : 1);
+    if (Math.random() < 0.005) changePercentage += (Math.random() * 0.01 + 0.05) * (Math.random() < currentDynamicProbability ? -1 : 1);
 
     let newPrice = currentPrice * (1 + changePercentage);
-    const slow = 0.999;
-    if (newPrice >= 3857 && currency === 'ETH') newPrice *= slow;
-    if (newPrice >= 5.75 && currency === 'DOGE') newPrice *= slow;
-    if (newPrice >= 0.075 && currency === 'SHIB') newPrice *= slow;
-    if (newPrice >= 15.12 && currency === 'TON') newPrice *= slow;
-    if (newPrice >= 315.12 && (currency === 'TRX' || currency === 'LTC' || currency === 'LUNA')) newPrice *= slow;
-    if (newPrice >= 100000 && (currency === 'BTC' || currency === 'BC')) newPrice *= slow;
     if (currency === 'USDT') return Math.random() * (1.001 - 0.999) + 0.999;
     return Math.max(0.000000000001, newPrice);
 }
